@@ -12,20 +12,30 @@
         body { 
             touch-action: none; 
             overscroll-behavior: none; 
-            /* Fix for mobile address bar heights */
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        #app-bg {
+            /* 适配移动端动态高度 */
             height: 100vh;
             height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
         }
-        .safe-pb {
-            padding-bottom: env(safe-area-inset-bottom, 24px);
+        .safe-area-padding {
+            padding-bottom: calc(env(safe-area-inset-bottom, 24px) + 12px);
         }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800 font-sans select-none overflow-hidden">
+<body class="bg-gray-100 text-gray-800 font-sans select-none">
 
-<div id="app-bg" class="bg-blue-50 flex flex-col items-center justify-between min-h-screen h-[100dvh] p-6 safe-pb transition-all-500">
+<div id="app-bg" class="bg-blue-50 p-6 safe-area-padding transition-all-500">
     
-    <div class="w-full flex justify-between items-center z-20">
+    <div class="w-full flex justify-between items-center z-20 shrink-0">
         <div>
             <h1 class="text-xl font-bold tracking-tight text-gray-800">Lens Buddy 🇸🇪</h1>
             <button onclick="openModal()" class="text-xs text-blue-600 font-medium mt-1 bg-white/70 px-2 py-1 rounded-full shadow-sm hover:bg-white transition flex items-center gap-1 active:scale-95">
@@ -38,7 +48,7 @@
         </button>
     </div>
 
-    <div class="relative flex items-center justify-center w-full flex-1 my-8">
+    <div class="relative flex items-center justify-center w-full flex-1 min-h-0">
         <div id="radar-ring" class="absolute w-72 h-72 bg-blue-300 rounded-full radar-ring"></div>
         <div id="status-ball" class="w-40 h-40 bg-blue-500 rounded-full flex flex-col items-center justify-center text-white shadow-xl z-10 transition-all-500">
             <span id="status-icon" class="text-5xl mb-2">📸</span>
@@ -49,8 +59,8 @@
         </div>
     </div>
 
-    <div class="bg-white/90 backdrop-blur w-full p-4 rounded-2xl shadow-lg z-20 mb-2">
-        <div id="tip-text" class="text-gray-700 text-sm leading-relaxed text-center min-h-[4rem] flex flex-col items-center justify-center px-2"></div>
+    <div class="bg-white/90 backdrop-blur w-full p-4 rounded-2xl shadow-lg z-20 shrink-0">
+        <div id="tip-text" class="text-gray-700 text-sm leading-relaxed text-center min-h-[4.5rem] flex flex-col items-center justify-center space-y-1"></div>
         <div id="geo-debug" class="text-[10px] text-gray-400 text-center mt-2 font-mono opacity-60"></div>
     </div>
 </div>
@@ -195,23 +205,23 @@
               tag = document.getElementById('zone-tag'), zoneName = document.getElementById('zone-name');
 
         if (activeRed) {
-            bg.className = "bg-red-50 flex flex-col items-center justify-between min-h-screen h-[100dvh] p-6 safe-pb transition-all-500";
+            bg.className = "bg-red-50 p-6 safe-area-padding transition-all-500 items-center";
             ball.className = "w-40 h-40 bg-red-600 rounded-full flex flex-col items-center justify-center text-white shadow-2xl z-10 scale-105 transition-all-500";
             ring.className = "absolute w-72 h-72 bg-red-400 rounded-full radar-ring";
             icon.innerText = "🚫"; text.innerText = d.danger; 
-            tip.innerHTML = `<div class="font-bold text-red-600 mb-1">${d.redAlert}</div><div class="text-gray-700">${activeRed.reason[currentLang]}</div>`;
+            tip.innerHTML = `<div class="font-bold text-red-600">${d.redAlert}</div><div class="text-gray-700">${activeRed.reason[currentLang]}</div>`;
             tag.style.opacity = "1"; zoneName.innerText = activeRed.name[currentLang];
             if(navigator.vibrate) navigator.vibrate([400, 100, 400]);
         } else if (activeYellow || closestDist < 500) {
             let target = activeYellow || closestZone;
-            bg.className = "bg-amber-50 flex flex-col items-center justify-between min-h-screen h-[100dvh] p-6 safe-pb transition-all-500";
+            bg.className = "bg-amber-50 p-6 safe-area-padding transition-all-500 items-center";
             ball.className = "w-40 h-40 bg-amber-500 rounded-full flex flex-col items-center justify-center text-white shadow-xl z-10 transition-all-500";
             ring.className = "absolute w-72 h-72 bg-amber-300 rounded-full radar-ring";
             icon.innerText = "⚠️"; text.innerText = d.warn; 
-            tip.innerHTML = `<div class="font-bold text-amber-600 mb-1">${activeYellow ? d.greyZone : d.approachWarn}</div><div class="text-gray-700">${target.reason[currentLang]}</div>`;
+            tip.innerHTML = `<div class="font-bold text-amber-600">${activeYellow ? d.greyZone : d.approachWarn}</div><div class="text-gray-700">${target.reason[currentLang]}</div>`;
             tag.style.opacity = "1"; zoneName.innerText = target.name[currentLang];
         } else {
-            bg.className = "bg-blue-50 flex flex-col items-center justify-between min-h-screen h-[100dvh] p-6 safe-pb transition-all-500";
+            bg.className = "bg-blue-50 p-6 safe-area-padding transition-all-500 items-center";
             ball.className = "w-40 h-40 bg-blue-500 rounded-full flex flex-col items-center justify-center text-white shadow-xl z-10 transition-all-500";
             ring.className = "absolute w-72 h-72 bg-blue-300 rounded-full radar-ring";
             icon.innerText = "📸"; text.innerText = d.safe; 
