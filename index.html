@@ -1,219 +1,744 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sweden Lens Buddy | 瑞典拍照小卫士</title>
+    <title>Sweden Lens Buddy - Skyddsobjekt Radar</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @keyframes pulse-ring {
-            0% { transform: scale(0.8); opacity: 0.5; }
-            80%, 100% { opacity: 0; transform: scale(1.5); }
+        .radar-ring {
+            animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
         }
-        .radar-ring { animation: pulse-ring 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite; }
-        .transition-all-500 { transition: all 0.5s ease; }
-        .lang-btn.active { background-color: white; color: #1e293b; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        @keyframes ping {
+            75%, 100% { transform: scale(1.5); opacity: 0; }
+        }
+        .transition-all-500 { transition: all 0.5s ease-in-out; }
     </style>
 </head>
-<body id="app-bg" class="bg-blue-50 flex flex-col items-center justify-between min-h-screen p-6 text-slate-800 transition-all-500">
+<body class="bg-gray-100 text-gray-800 font-sans select-none overflow-hidden">
 
-    <!-- 语言切换器 -->
-    <div class="fixed top-4 right-4 flex bg-slate-200/50 backdrop-blur p-1 rounded-xl z-50">
-        <button onclick="setLanguage('zh')" id="btn-zh" class="lang-btn active px-3 py-1 text-xs rounded-lg transition-all">中文</button>
-        <button onclick="setLanguage('en')" id="btn-en" class="lang-btn px-3 py-1 text-xs rounded-lg transition-all">EN</button>
-        <button onclick="setLanguage('sv')" id="btn-sv" class="lang-btn px-3 py-1 text-xs rounded-lg transition-all">SV</button>
-    </div>
-
-    <!-- 顶部状态栏 -->
-    <div class="text-center mt-8">
-        <div id="badge" class="inline-block px-3 py-1 rounded-full bg-blue-100 text-blue-600 text-xs font-bold mb-2 transition-all-500">
-            PROTECTING
-        </div>
-        <h1 id="ui-title" class="text-2xl font-black text-slate-900 tracking-tight">瑞典拍照小卫士</h1>
-        <p id="geo-debug" class="text-slate-400 font-mono text-[10px] mt-1">Waiting for GPS...</p>
-    </div>
-
-    <!-- 核心雷达 -->
-    <div class="relative flex items-center justify-center my-8">
-        <div id="radar-ring" class="absolute w-72 h-72 bg-blue-400 rounded-full radar-ring"></div>
-        <div id="status-ball" class="w-48 h-48 bg-blue-500 rounded-full flex flex-col items-center justify-center text-white shadow-xl z-10 transition-all-500 text-center px-4">
-            <span id="status-icon" class="text-6xl mb-1">📸</span>
-            <span id="status-text" class="font-bold text-lg leading-tight">可以拍照</span>
-        </div>
-        <div id="zone-tag" class="absolute -bottom-8 px-4 py-2 bg-white/80 backdrop-blur shadow-sm rounded-2xl text-xs font-bold text-slate-700 opacity-0 transition-all-500">
-            <span id="ui-near">靠近</span>: <span id="zone-name">---</span>
-        </div>
-    </div>
-
-    <!-- 提示卡片 -->
-    <div class="w-full max-w-md space-y-4">
-        <div class="bg-white/70 backdrop-blur-md p-6 rounded-[2rem] shadow-xl border border-white/50">
-            <div class="flex items-center mb-3">
-                <div id="tip-icon-bg" class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-3">
-                    <span id="tip-emoji">💡</span>
-                </div>
-                <h3 id="ui-tip-title" class="font-bold text-slate-900">学长提醒</h3>
-            </div>
-            <p id="tip-text" class="text-slate-600 leading-relaxed text-sm">Initializing...</p>
-        </div>
-
-        <div class="flex flex-col items-center space-y-2">
-            <button id="ui-guide-btn" onclick="toggleGuide()" class="text-slate-400 text-xs underline decoration-dotted">查看禁拍标志图鉴</button>
-            <p id="ui-disclaimer" class="text-[10px] text-slate-400 text-center px-8 italic">
-                * Based on open data. Physical signs always prevail.
+<div id="app-bg" class="bg-blue-50 flex flex-col items-center justify-between min-h-screen p-6 transition-all-500">
+    
+    <!-- 头部：语言切换 & 标题 -->
+    <div class="w-full flex justify-between items-center z-20">
+        <div>
+            <h1 class="text-xl font-bold tracking-tight text-gray-800">Lens Buddy 🇸🇪</h1>
+            <!-- 动态统计标签 -->
+            <p id="stats-counter" class="text-xs text-blue-600 font-medium mt-1 bg-white/60 px-2 py-0.5 rounded-full inline-block shadow-sm">
+                🛡️ Loading zones...
             </p>
         </div>
+        <button onclick="switchLang()" class="bg-white/80 backdrop-blur shadow-sm px-4 py-2 rounded-full font-bold text-sm hover:bg-gray-100 transition">
+            🌐 <span id="lang-btn">EN</span>
+        </button>
     </div>
 
-    <!-- 图鉴 Modal -->
-    <div id="guide-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] hidden items-center justify-center p-6">
-        <div class="bg-white rounded-[2.5rem] p-8 max-w-sm w-full">
-            <h2 id="ui-modal-title" class="text-xl font-bold mb-4 text-center">认准这些标志</h2>
-            <div class="space-y-4 text-sm text-slate-600">
-                <div class="flex items-start p-3 bg-yellow-50 rounded-xl">
-                    <span class="text-2xl mr-3">🟡</span>
-                    <p id="ui-modal-y">黄色圆牌是受保护对象标志，严禁拍照。</p>
-                </div>
-                <div class="flex items-start p-3 bg-blue-50 rounded-xl">
-                    <span class="text-2xl mr-3">🟦</span>
-                    <p id="ui-modal-b">蓝色方牌常见于政府建筑，建议谨慎。</p>
-                </div>
-            </div>
-            <button id="ui-modal-close" onclick="toggleGuide()" class="w-full mt-6 py-4 bg-slate-900 text-white rounded-2xl font-bold">我知道了</button>
+    <!-- 核心雷达区 -->
+    <div class="relative flex items-center justify-center w-full flex-1 my-8">
+        <div id="radar-ring" class="absolute w-72 h-72 bg-blue-300 rounded-full radar-ring"></div>
+        <div id="status-ball" class="w-48 h-48 bg-blue-500 rounded-full flex flex-col items-center justify-center text-white shadow-xl z-10 transition-all-500">
+            <span id="status-icon" class="text-6xl mb-2">📸</span>
+            <span id="status-text" class="text-2xl font-bold tracking-wider">SAFE</span>
+        </div>
+        
+        <!-- 标签：显示触发的敏感区名称 -->
+        <div id="zone-tag" class="absolute top-4 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-1 rounded-full shadow-lg opacity-0 transition-opacity duration-300 z-20 pointer-events-none whitespace-nowrap">
+            📍 <span id="zone-name">Unknown Zone</span>
         </div>
     </div>
 
-    <script>
-        // 语言字典
-        const LANG_DATA = {
-            zh: {
-                title: "瑞典拍照小卫士", badge: "实时防护中", near: "靠近", tipTitle: "学长提醒",
-                guideBtn: "查看禁拍标志图鉴", disclaimer: "* 基于开源数据，物理警示牌具有最高法律效力。",
-                modalTitle: "认准这些标志", modalY: "黄色圆牌是受保护对象 (Skyddsobjekt)，严禁拍照。", modalB: "蓝色方牌常见于政府办公区，建议收起手机。", modalClose: "我知道了",
-                safe: "可以拍照", safeTip: "当前位置安全。请享受美景，但建议避开路人正脸或警车。",
-                warn: "谨慎观察", warnTip: "附近有敏感设施。请留意是否有带相机划线标志的黄色圆牌。",
-                danger: "严禁拍照", dangerTip: "【紧急】您正处于禁拍区附近！请立刻收起手机，不要做任何举机动作。",
-                locError: "定位失败。请在浏览器设置中允许 GPS 访问。"
-            },
-            en: {
-                title: "Sweden Lens Buddy", badge: "Live Protecting", near: "Near", tipTitle: "Buddy's Tip",
-                guideBtn: "View Sign Guide", disclaimer: "* Based on open data. Physical signs always prevail.",
-                modalTitle: "Recognize the Signs", modalY: "Yellow circle means 'Skyddsobjekt'. Photography strictly forbidden.", modalB: "Blue square signs are govt buildings. Avoid aiming your lens.", modalClose: "Got it",
-                safe: "Safe to Snap", safeTip: "Environment is safe. Enjoy the view, but respect personal privacy.",
-                warn: "Be Cautious", warnTip: "Sensitive facility nearby. Look out for yellow signs with crossed-out camera.",
-                danger: "NO PHOTOS", dangerTip: "CRITICAL! You are near a restricted area. Put your phone away immediately.",
-                locError: "GPS Failed. Please enable location access in browser settings."
-            },
-            sv: {
-                title: "Svensk Fotovakt", badge: "Skyddar Nu", near: "Nära", tipTitle: "Tips från kompisen",
-                guideBtn: "Visa skyltguide", disclaimer: "* Baserat på öppna data. Fysiska skyltar gäller alltid.",
-                modalTitle: "Lär känna skyltarna", modalY: "Gul rund skylt betyder Skyddsobjekt. Foto- och avbildningsförbud.", modalB: "Blå skyltar finns vid myndigheter. Undvik att fotografera fönster.", modalClose: "Jag förstår",
-                safe: "Fritt fram", safeTip: "Området är säkert. Njut av utsikten men visa respekt för integritet.",
-                warn: "Var vaksam", warnTip: "Känsligt objekt i närheten. Håll utkik efter gula skyddsobjektsskyltar.",
-                danger: "FOTOFÖRBUD", dangerTip: "VARNING! Du är nära ett skyddsobjekt. Lägg undan mobilen direkt.",
-                locError: "Positionering misslyckades. Tillåt GPS-åtkomst i webbläsaren."
-            }
-        };
+    <!-- 底部提示信息区 -->
+    <div class="bg-white/80 backdrop-blur w-full p-5 rounded-2xl shadow-lg z-20">
+        <p id="tip-text" class="text-gray-600 text-sm leading-relaxed text-center">
+            Getting GPS signal...
+        </p>
+        <p id="geo-debug" class="text-[10px] text-gray-400 text-center mt-3 font-mono">
+            LAT: -- | LNG: --
+        </p>
+    </div>
+</div>
 
-        let currentLang = 'zh';
-        const DANGER_ZONES = [
-            { name: {zh:"国防学院", en:"Defence Univ.", sv:"Försvarshögskolan"}, lat: 59.3456, lng: 18.0715, r: 200 },
-            { name: {zh:"国防部", en:"MoD HQ", sv:"Högkvarteret"}, lat: 59.3386, lng: 18.1023, r: 300 },
-            { name: {zh:"皇宫", en:"Royal Palace", sv:"Slottet"}, lat: 59.3268, lng: 18.0717, r: 150 },
-            { name: {zh:"电台区", en:"SVT/SR Area", sv:"Radiohuset"}, lat: 59.3347, lng: 18.1005, r: 250 }
-        ];
+<script>
+    // ==========================================
+    // 1. 多语言配置字典
+    // ==========================================
+    const LANG_DATA = {
+        en: { safe: "SAFE", danger: "NO PHOTO", warn: "WARNING", safeTip: "You are outside any known restricted areas. Feel free to take photos, but always look out for yellow 'Skyddsobjekt' signs.", btn: "EN" },
+        zh: { safe: "安全", danger: "严禁拍照", warn: "敏感区域", safeTip: "你目前处于安全区域，可以自由拍照。但请始终留意现实中是否有黄色的禁拍标志。", btn: "中文" },
+        sv: { safe: "SÄKERT", danger: "FOTOFÖRBUD", warn: "VARNING", safeTip: "Du befinner dig utanför kända skyddsobjekt. Fotografera fritt, men håll utkik efter gula skyltar.", btn: "SV" }
+    };
+    let currentLang = 'zh';
 
-        function setLanguage(lang) {
-            currentLang = lang;
-            document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById('btn-' + lang).classList.add('active');
-            
-            // 更新静态文本
-            const d = LANG_DATA[lang];
-            document.getElementById('ui-title').innerText = d.title;
-            document.getElementById('badge').innerText = d.badge;
-            document.getElementById('ui-near').innerText = d.near;
-            document.getElementById('ui-tip-title').innerText = d.tipTitle;
-            document.getElementById('ui-guide-btn').innerText = d.guideBtn;
-            document.getElementById('ui-disclaimer').innerText = d.disclaimer;
-            document.getElementById('ui-modal-title').innerText = d.modalTitle;
-            document.getElementById('ui-modal-y').innerText = d.modalY;
-            document.getElementById('ui-modal-b').innerText = d.modalB;
-            document.getElementById('ui-modal-close').innerText = d.modalClose;
-            
-            // 重新运行一次 UI 更新逻辑
-            if (lastPosition) updateUI(lastPosition);
+    // ==========================================
+    // 2. 模块化城市数据配置区 (把你从 AI Studio 生成的数据贴到对应的数组里)
+    // ==========================================
+
+    // 示例：斯德哥尔摩数据
+    const STOCKHOLM_ZONES = [
+        {
+        "name": {
+        "zh": "瑞典国防军总部",
+        "en": "Swedish Armed Forces Headquarters",
+        "sv": "Försvarsmaktens högkvarter"
+        },
+        "reason": {
+        "zh": "敏感政府机构，请留意周边黄色禁拍标志，避免拍摄建筑细节。",
+        "en": "Sensitive government site. Watch for yellow 'No Photography' signs and avoid capturing building details.",
+        "sv": "Känslig myndighetsbyggnad. Var uppmärksam på gula förbudsskyltar och undvik fotografering av detaljer."
+        },
+        "lat": 59.3459,
+        "lng": 18.0874,
+        "type": "yellow",
+        "polygon": [
+        [59.3463187, 18.086375],
+        [59.3454818, 18.0872708],
+        [59.3457972, 18.0884042],
+        [59.3466341, 18.0875084],
+        [59.3463187, 18.086375]
+        ]
+        },
+        {
+        "name": {
+        "zh": "卡尔贝里军事学院",
+        "en": "Military Academy Karlberg",
+        "sv": "Militärhögskolan Karlberg"
+        },
+        "reason": {
+        "zh": "军事禁区，严禁拍照、测绘或越界，违者可能面临法律起诉。",
+        "en": "Restricted military area. Photography, mapping, or trespassing is strictly prohibited and subject to prosecution.",
+        "sv": "Militärt skyddsobjekt. Foto-, avbildnings- och tillträdesförbud råder. Överträdelse kan medföra rättsliga påföljder."
+        },
+        "lat": 59.3422,
+        "lng": 18.0175,
+        "type": "red",
+        "polygon": [
+        [59.3404142, 18.0191868],
+        [59.3402968, 18.0192078],
+        [59.3401555, 18.0201463],
+        [59.3403793, 18.0224246],
+        [59.3401792, 18.0238639],
+        [59.3401846, 18.024216],
+        [59.3406733, 18.0240765],
+        [59.3411535, 18.0254033],
+        [59.3416117, 18.0248695],
+        [59.3427345, 18.0233716],
+        [59.3432865, 18.0223782],
+        [59.3437586, 18.0206932],
+        [59.3439724, 18.0195],
+        [59.3445163, 18.017012],
+        [59.3451248, 18.0143911],
+        [59.3451848, 18.0134631],
+        [59.3450149, 18.0117983],
+        [59.3440549, 18.0101445],
+        [59.3434869, 18.0098475],
+        [59.3421609, 18.0104559],
+        [59.3420842, 18.0116285],
+        [59.3420914, 18.0128212],
+        [59.3411731, 18.0131917],
+        [59.3409162, 18.0142782],
+        [59.3403153, 18.0161408],
+        [59.3402364, 18.0173725],
+        [59.3404142, 18.0191868]
+        ]
+        },
+        {
+        "name": {
+        "zh": "瑞典国防部研究局 (FOI)",
+        "en": "Swedish Defence Research Agency (FOI)",
+        "sv": "FOI Totalförsvarets forskningsinstitut"
+        },
+        "reason": {
+        "zh": "军事禁区，严禁拍照、测绘或越界，违者可能面临法律起诉。",
+        "en": "Restricted military area. Photography, mapping, or trespassing is strictly prohibited and subject to prosecution.",
+        "sv": "Militärt skyddsobjekt. Foto-, avbildnings- och tillträdesförbud råder. Överträdelse kan medföra rättsliga påföljder."
+        },
+        "lat": 59.4044,
+        "lng": 17.9452,
+        "type": "red",
+        "polygon": [
+        [59.4047548, 17.9454817],
+        [59.4048199, 17.9453963],
+        [59.4048418, 17.9451302],
+        [59.4045709, 17.9444007],
+        [59.4044268, 17.9446067],
+        [59.4045276, 17.9448981],
+        [59.404414, 17.9450698],
+        [59.4043132, 17.9447869],
+        [59.404165, 17.9450183],
+        [59.4042739, 17.9452761],
+        [59.4041603, 17.9454478],
+        [59.4040598, 17.9451903],
+        [59.4039244, 17.9453963],
+        [59.404121, 17.945937],
+        [59.4041694, 17.9458766],
+        [59.4042914, 17.9461688],
+        [59.4044268, 17.9459628],
+        [59.4043136, 17.9456792],
+        [59.4044837, 17.94524],
+        [59.4046452, 17.9451817],
+        [59.4047548, 17.9454817]
+        ]
+        },
+        {
+        "name": {
+        "zh": "斯德哥尔摩国防军设施 (Lidingövägen)",
+        "en": "Swedish Armed Forces Facility (Lidingövägen)",
+        "sv": "Försvarsmakten (Lidingövägen)"
+        },
+        "reason": {
+        "zh": "军事禁区，严禁拍照、测绘或越界，违者可能面临法律起诉。",
+        "en": "Restricted military area. Photography, mapping, or trespassing is strictly prohibited and subject to prosecution.",
+        "sv": "Militärt skyddsobjekt. Foto-, avbildnings- och tillträdesförbud råder. Överträdelse kan medföra rättsliga påföljder."
+        },
+        "lat": 59.3465,
+        "lng": 18.0895,
+        "type": "red",
+        "polygon": [
+        [59.3478878, 18.0928353],
+        [59.3480434, 18.092312],
+        [59.3474763, 18.0897978],
+        [59.3469331, 18.0879733],
+        [59.3468287, 18.0875487],
+        [59.346939, 18.08743],
+        [59.3467043, 18.0863905],
+        [59.3465251, 18.0860497],
+        [59.3459495, 18.0861325],
+        [59.3454608, 18.0865563],
+        [59.3451655, 18.0873193],
+        [59.3455706, 18.088778],
+        [59.3463124, 18.0913994],
+        [59.3467582, 18.0929933],
+        [59.3474483, 18.0929304],
+        [59.347507, 18.0927578],
+        [59.3478878, 18.0928353]
+        ]
+        },
+        {
+        "name": {
+        "zh": "斯德哥尔摩国防军设施 (Gärdet)",
+        "en": "Swedish Armed Forces Facility (Gärdet)",
+        "sv": "Försvarsmakten (Gärdet)"
+        },
+        "reason": {
+        "zh": "军事禁区，严禁拍照、测绘或越界，违者可能面临法律起诉。",
+        "en": "Restricted military area. Photography, mapping, or trespassing is strictly prohibited and subject to prosecution.",
+        "sv": "Militärt skyddsobjekt. Foto-, avbildnings- och tillträdesförbud råder. Överträdelse kan medföra rättsliga påföljder."
+        },
+        "lat": 59.3415,
+        "lng": 18.1004,
+        "type": "red",
+        "polygon": [
+        [59.3405564, 18.0979576],
+        [59.3404405, 18.0978691],
+        [59.3398569, 18.1007749],
+        [59.3398198, 18.1009505],
+        [59.3406534, 18.1018944],
+        [59.3410058, 18.102924],
+        [59.3410692, 18.1029713],
+        [59.3413788, 18.1028836],
+        [59.3425573, 18.1009978],
+        [59.3431384, 18.0995074],
+        [59.3424134, 18.0983281],
+        [59.3420182, 18.0977793],
+        [59.3418995, 18.09785],
+        [59.3416126, 18.0987867],
+        [59.3412171, 18.0984044],
+        [59.3405782, 18.0978465],
+        [59.3405564, 18.0979576]
+        ]
+        },
+        {
+        "name": {
+        "zh": "国防部长街区",
+        "en": "Försvarsministern Residential Block",
+        "sv": "Försvarsministern City Block"
+        },
+        "reason": {
+        "zh": "该区域与国防或政府相关，虽非严禁区，建议谨慎拍摄。",
+        "en": "This area has defense or government associations. Exercise caution when filming or photographing.",
+        "sv": "Området har koppling till försvar eller statlig verksamhet. Var aktsam vid fotografering."
+        },
+        "lat": 59.28,
+        "lng": 18.1332,
+        "type": "gray",
+        "polygon": [
+        [59.279927, 18.131657],
+        [59.2793351, 18.1342141],
+        [59.2799581, 18.1347833],
+        [59.28055, 18.1321977],
+        [59.279927, 18.131657]
+        ]
+        },
+        {
+        "name": {
+        "zh": "国防贷款街区",
+        "en": "Försvarslånet Residential Block",
+        "sv": "Försvarslånet City Block"
+        },
+        "reason": {
+        "zh": "该区域与国防或政府相关，虽非严禁区，建议谨慎拍摄。",
+        "en": "This area has defense or government associations. Exercise caution when filming or photographing.",
+        "sv": "Området har koppling till försvar eller statlig verksamhet. Var aktsam vid fotografering."
+        },
+        "lat": 59.2926,
+        "lng": 17.9841,
+        "type": "gray",
+        "polygon": [
+        [59.2934939, 17.9832546],
+        [59.292831, 17.9836435],
+        [59.2926, 17.9828821],
+        [59.2922563, 17.9829223],
+        [59.2925809, 17.983735],
+        [59.2927028, 17.9838798],
+        [59.2926247, 17.9839603],
+        [59.2922193, 17.9831315],
+        [59.2921248, 17.9831476],
+        [59.2919426, 17.983558],
+        [59.2917837, 17.9842071],
+        [59.291796, 17.9846604],
+        [59.2919042, 17.985119],
+        [59.2921617, 17.9856501],
+        [59.292311, 17.9853497],
+        [59.2925521, 17.9856125],
+        [59.2927, 17.985339],
+        [59.2924384, 17.9843331],
+        [59.2927048, 17.9843586],
+        [59.2927345, 17.9841789],
+        [59.2934939, 17.9832546]
+        ]
+        },
+        {
+        "name": {
+        "zh": "斯德哥尔摩敏感设施",
+        "en": "Military Facility",
+        "sv": "Militär anläggning"
+        },
+        "reason": {
+        "zh": "军事禁区，严禁拍照、测绘或越界，违者可能面临法律起诉。",
+        "en": "Restricted military area. Photography, mapping, or trespassing is strictly prohibited and subject to prosecution.",
+        "sv": "Militärt skyddsobjekt. Foto-, avbildnings- och tillträdesförbud råder. Överträdelse kan medföra rättsliga påföljder."
+        },
+        "lat": 59.3403,
+        "lng": 18.0248,
+        "type": "red",
+        "polygon": [
+        [59.3404266, 18.0248896],
+        [59.3402753, 18.024481],
+        [59.3402357, 18.0242015],
+        [59.3401846, 18.024216],
+        [59.3400574, 18.0242472],
+        [59.3399906, 18.0244155],
+        [59.3399491, 18.0247318],
+        [59.3398682, 18.0251106],
+        [59.3402831, 18.0253508],
+        [59.3403601, 18.025315],
+        [59.3404537, 18.025322],
+        [59.340564, 18.025371],
+        [59.3406029, 18.0253771],
+        [59.340631, 18.0253497],
+        [59.340688, 18.0252507],
+        [59.3406804, 18.0251493],
+        [59.3406735, 18.0250723],
+        [59.3404266, 18.0248896]
+        ]
+        },
+        {
+        "name": {
+        "zh": "军装装备有限公司",
+        "en": "Military Outfitter Ltd.",
+        "sv": "Militär Ekiperings Aktiebolaget"
+        },
+        "reason": {
+        "zh": "该区域与国防或政府相关，虽非严禁区，建议谨慎拍摄。",
+        "en": "This area has defense or government associations. Exercise caution when filming or photographing.",
+        "sv": "Området har koppling till försvar eller statlig verksamhet. Var aktsam vid fotografering."
+        },
+        "lat": 59.3388054,
+        "lng": 18.0521359,
+        "type": "gray",
+        "polygon": [
+        [59.3393054, 18.0511359],
+        [59.3393054, 18.0531359],
+        [59.3383054, 18.0531359],
+        [59.3383054, 18.0511359],
+        [59.3393054, 18.0511359]
+        ]
+        },
+        {
+        "name": {
+        "zh": "瑞典国防大学",
+        "en": "Swedish Defence University",
+        "sv": "Försvarshögskolan"
+        },
+        "reason": {
+        "zh": "敏感国防教育机构，请留意周边黄色禁拍标志，避免拍摄建筑细节。",
+        "en": "Sensitive defense educational site. Watch for yellow 'No Photography' signs and avoid capturing building details.",
+        "sv": "Känslig utbildningsbyggnad. Var uppmärksam på gula förbudsskyltar och undvik fotografering av detaljer."
+        },
+        "lat": 59.3490702,
+        "lng": 18.0691412,
+        "type": "yellow",
+        "polygon": [
+        [59.3495702, 18.0681412],
+        [59.3495702, 18.0701412],
+        [59.3485702, 18.0701412],
+        [59.3485702, 18.0681412],
+        [59.3495702, 18.0681412]
+        ]
+        },
+        {
+        "name": {
+        "zh": "57毫米礼炮礼台",
+        "en": "57 mm Cannon M/89 Saluting Battery",
+        "sv": "57 mm kanon M/89 Saluteringsstation"
+        },
+        "reason": {
+        "zh": "军事禁区，严禁拍照、测绘或越界，违者可能面临法律起诉。",
+        "en": "Restricted military area. Photography, mapping, or trespassing is strictly prohibited and subject to prosecution.",
+        "sv": "Militärt skyddsobjekt. Foto-, avbildnings- och tillträdesförbud råder. Överträdelse kan medföra rättsliga påföljder."
+        },
+        "lat": 59.3259925,
+        "lng": 18.0805929,
+        "type": "red",
+        "polygon": [
+        [59.3264925, 18.0795929],
+        [59.3264925, 18.0815929],
+        [59.3254925, 18.0815929],
+        [59.3254925, 18.0795929],
+        [59.3264925, 18.0795929]
+        ]
+        },
+        {
+        "name": {
+        "zh": "57毫米礼炮礼台",
+        "en": "57 mm Cannon M/89 Saluting Battery",
+        "sv": "57 mm kanon M/89 Saluteringsstation"
+        },
+        "reason": {
+        "zh": "军事禁区，严禁拍照、测绘或越界，违者可能面临法律起诉。",
+        "en": "Restricted military area. Photography, mapping, or trespassing is strictly prohibited and subject to prosecution.",
+        "sv": "Militärt skyddsobjekt. Foto-, avbildnings- och tillträdesförbud råder. Överträdelse kan medföra rättsliga påföljder."
+        },
+        "lat": 59.32596,
+        "lng": 18.0805932,
+        "type": "red",
+        "polygon": [
+        [59.32646, 18.0795932],
+        [59.32646, 18.0815932],
+        [59.32546, 18.0815932],
+        [59.32546, 18.0795932],
+        [59.32646, 18.0795932]
+        ]
+        },
+        {
+        "name": {
+        "zh": "57毫米礼炮礼台",
+        "en": "57 mm Cannon M/89 Saluting Battery",
+        "sv": "57 mm kanon M/89 Saluteringsstation"
+        },
+        "reason": {
+        "zh": "军事禁区，严禁拍照、测绘或越界，违者可能面临法律起诉。",
+        "en": "Restricted military area. Photography, mapping, or trespassing is strictly prohibited and subject to prosecution.",
+        "sv": "Militärt skyddsobjekt. Foto-, avbildnings- och tillträdesförbud råder. Överträdelse kan medföra rättsliga påföljder."
+        },
+        "lat": 59.3259331,
+        "lng": 18.0805951,
+        "type": "red",
+        "polygon": [
+        [59.3264331, 18.0795951],
+        [59.3264331, 18.0815951],
+        [59.3254331, 18.0815951],
+        [59.3254331, 18.0795951],
+        [59.3264331, 18.0795951]
+        ]
+        },
+        {
+        "name": {
+        "zh": "军事地堡",
+        "en": "Military Bunker",
+        "sv": "Bunker"
+        },
+        "reason": {
+        "zh": "军事禁区，严禁拍照、测绘或越界，违者可能面临法律起诉。",
+        "en": "Restricted military area. Photography, mapping, or trespassing is strictly prohibited and subject to prosecution.",
+        "sv": "Militärt skyddsobjekt. Foto-, avbildnings- och tillträdesförbud råder. Överträdelse kan medföra rättsliga påföljder."
+        },
+        "lat": 59.4350376,
+        "lng": 17.9006193,
+        "type": "red",
+        "polygon": [
+        [59.4355376, 17.8996193],
+        [59.4355376, 17.9016193],
+        [59.4345376, 17.9016193],
+        [59.4345376, 17.8996193],
+        [59.4355376, 17.8996193]
+        ]
+        },
+        {
+        "name": {
+        "zh": "瑞典社会保险局",
+        "en": "Swedish Social Insurance Agency",
+        "sv": "Försäkringskassan"
+        },
+        "reason": {
+        "zh": "该区域与国防或政府相关，虽非严禁区，建议谨慎拍摄。",
+        "en": "This area has defense or government associations. Exercise caution when filming or photographing.",
+        "sv": "Området har koppling till försvar eller statlig verksamhet. Var aktsam vid fotografering."
+        },
+        "lat": 59.4061472,
+        "lng": 17.9485549,
+        "type": "gray",
+        "polygon": [
+        [59.4066472, 17.9475549],
+        [59.4066472, 17.9495549],
+        [59.4056472, 17.9495549],
+        [59.4056472, 17.9475549],
+        [59.4066472, 17.9475549]
+        ]
+        },
+        {
+        "name": {
+        "zh": "废弃军事地堡",
+        "en": "Abandoned Military Bunker",
+        "sv": "Bunker (Ruin)"
+        },
+        "reason": {
+        "zh": "军事禁区，严禁拍照、测绘或越界，违者可能面临法律起诉。",
+        "en": "Restricted military area. Photography, mapping, or trespassing is strictly prohibited and subject to prosecution.",
+        "sv": "Militärt skyddsobjekt. Foto-, avbildnings- och tillträdesförbud råder. Överträdelse kan medföra rättsliga påföljder."
+        },
+        "lat": 59.4336151,
+        "lng": 17.8935446,
+        "type": "red",
+        "polygon": [
+        [59.4341151, 17.8925446],
+        [59.4341151, 17.8945446],
+        [59.4331151, 17.8945446],
+        [59.4331151, 17.8925446],
+        [59.4341151, 17.8925446]
+        ]
+        },
+        {
+        "name": {
+        "zh": "废弃军事地堡",
+        "en": "Abandoned Military Bunker",
+        "sv": "Bunker (Ruin)"
+        },
+        "reason": {
+        "zh": "军事禁区，严禁拍照、测绘或越界，违者可能面临法律起诉。",
+        "en": "Restricted military area. Photography, mapping, or trespassing is strictly prohibited and subject to prosecution.",
+        "sv": "Militärt skyddsobjekt. Foto-, avbildnings- och tillträdesförbud råder. Överträdelse kan medföra rättsliga påföljder."
+        },
+        "lat": 59.4329728,
+        "lng": 17.8924078,
+        "type": "red",
+        "polygon": [
+        [59.4334728, 17.8914078],
+        [59.4334728, 17.8934078],
+        [59.4324728, 17.8934078],
+        [59.4324728, 17.8914078],
+        [59.4334728, 17.8914078]
+        ]
+        },
+        {
+        "name": {
+        "zh": "军事地堡",
+        "en": "Military Bunker",
+        "sv": "Bunker"
+        },
+        "reason": {
+        "zh": "军事禁区，严禁拍照、测绘或越界，违者可能面临法律起诉。",
+        "en": "Restricted military area. Photography, mapping, or trespassing is strictly prohibited and subject to prosecution.",
+        "sv": "Militärt skyddsobjekt. Foto-, avbildnings- och tillträdesförbud råder. Överträdelse kan medföra rättsliga påföljder."
+        },
+        "lat": 59.4330206,
+        "lng": 17.8938017,
+        "type": "red",
+        "polygon": [
+        [59.4335206, 17.8928017],
+        [59.4335206, 17.8948017],
+        [59.4325206, 17.8948017],
+        [59.4325206, 17.8928017],
+        [59.4335206, 17.8928017]
+        ]
+        },
+        {
+        "name": {
+        "zh": "军事战壕",
+        "en": "Military Trench",
+        "sv": "Skyttegrav"
+        },
+        "reason": {
+        "zh": "军事禁区，严禁拍照、测绘或越界，违者可能面临法律起诉。",
+        "en": "Restricted military area. Photography, mapping, or trespassing is strictly prohibited and subject to prosecution.",
+        "sv": "Militärt skyddsobjekt. Foto-, avbildnings- och tillträdesförbud råder. Överträdelse kan medföra rättsliga påföljder."
+        },
+        "lat": 59.3606318,
+        "lng": 18.059515,
+        "type": "red",
+        "polygon": [
+        [59.3611318, 18.058515],
+        [59.3611318, 18.060515],
+        [59.3601318, 18.060515],
+        [59.3601318, 18.058515],
+        [59.3611318, 18.058515]
+        ]
         }
+    ];
 
-        let lastPosition = null;
+    // 示例：哥德堡数据 (等你提取完了贴这里)
+    const GOTHENBURG_ZONES = []; 
+    
+    // 示例：乌普萨拉数据
+    const UPPSALA_ZONES = [];
 
-        function getDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371e3;
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    // 🌟 终极合并：将所有城市的数组组合成一个大监控网
+    const DANGER_ZONES = [
+        ...STOCKHOLM_ZONES,
+        ...GOTHENBURG_ZONES,
+        ...UPPSALA_ZONES
+    ];
+
+    // 初始化显示保护点数量
+    document.getElementById('stats-counter').innerText = `🛡️ 全瑞典监控中: ${DANGER_ZONES.length} 个区域`;
+
+    // ==========================================
+    // 3. 核心算法区
+    // ==========================================
+
+    // Haversine 公式计算两个经纬度之间的直线距离（米）
+    function getDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371e3; 
+        const φ1 = lat1 * Math.PI/180, φ2 = lat2 * Math.PI/180;
+        const Δφ = (lat2-lat1) * Math.PI/180, Δλ = (lon2-lon1) * Math.PI/180;
+        const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    // Ray-Casting 射线投射算法：判断点是否在多边形内部
+    function isPointInPolygon(point, polygon) {
+        if (!polygon || polygon.length < 3) return false;
+        let x = point.lng, y = point.lat;
+        let inside = false;
+        for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+            let xi = polygon[i][1], yi = polygon[i][0]; // 提取多边形上的经度(lng)和纬度(lat)
+            let xj = polygon[j][1], yj = polygon[j][0];
+            let intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
         }
+        return inside;
+    }
 
-        function updateUI(pos) {
-            lastPosition = pos;
-            const { latitude, longitude } = pos.coords;
-            const d = LANG_DATA[currentLang];
-            document.getElementById('geo-debug').innerText = `LAT: ${latitude.toFixed(4)} | LNG: ${longitude.toFixed(4)}`;
+    // ==========================================
+    // 4. UI 更新逻辑与位置监听
+    // ==========================================
 
-            let minDir = Infinity;
-            let targetZone = null;
+    let lastPosition = null;
 
-            DANGER_ZONES.forEach(zone => {
-                const dist = getDistance(latitude, longitude, zone.lat, zone.lng);
-                if (dist < minDir) { minDir = dist; targetZone = zone; }
-            });
-
-            const bg = document.getElementById('app-bg');
-            const ball = document.getElementById('status-ball');
-            const ring = document.getElementById('radar-ring');
-            const icon = document.getElementById('status-icon');
-            const text = document.getElementById('status-text');
-            const tip = document.getElementById('tip-text');
-            const tag = document.getElementById('zone-tag');
-            const zoneNameSpan = document.getElementById('zone-name');
-
-            if (minDir < 120) {
-                bg.className = "bg-red-50 flex flex-col items-center justify-between min-h-screen p-6 transition-all-500";
-                ball.className = "w-48 h-48 bg-red-600 rounded-full flex flex-col items-center justify-center text-white shadow-2xl z-10 scale-105 transition-all-500";
-                ring.className = "absolute w-72 h-72 bg-red-400 rounded-full radar-ring";
-                icon.innerText = "🚫"; text.innerText = d.danger; tip.innerText = d.dangerTip;
-                tag.style.opacity = "1"; zoneNameSpan.innerText = targetZone.name[currentLang];
-            } else if (minDir < 400) {
-                bg.className = "bg-amber-50 flex flex-col items-center justify-between min-h-screen p-6 transition-all-500";
-                ball.className = "w-48 h-48 bg-amber-500 rounded-full flex flex-col items-center justify-center text-white shadow-xl z-10 transition-all-500";
-                ring.className = "absolute w-72 h-72 bg-amber-300 rounded-full radar-ring";
-                icon.innerText = "⚠️"; text.innerText = d.warn; tip.innerText = d.warnTip;
-                tag.style.opacity = "1"; zoneNameSpan.innerText = targetZone.name[currentLang];
-            } else {
-                bg.className = "bg-blue-50 flex flex-col items-center justify-between min-h-screen p-6 transition-all-500";
-                ball.className = "w-48 h-48 bg-blue-500 rounded-full flex flex-col items-center justify-center text-white shadow-xl z-10 transition-all-500";
-                ring.className = "absolute w-72 h-72 bg-blue-300 rounded-full radar-ring";
-                icon.innerText = "📸"; text.innerText = d.safe; tip.innerText = d.safeTip;
-                tag.style.opacity = "0";
-            }
-        }
-
-        function toggleGuide() {
-            const m = document.getElementById('guide-modal');
-            m.classList.toggle('hidden'); m.classList.toggle('flex');
-        }
-
-        if (navigator.geolocation) {
-            navigator.geolocation.watchPosition(updateUI, (err) => {
-                document.getElementById('tip-text').innerText = LANG_DATA[currentLang].locError;
-            }, { enableHighAccuracy: true });
-        }
+    function updateUI(pos) {
+        lastPosition = pos;
+        const { latitude, longitude } = pos.coords;
+        const userPoint = { lat: latitude, lng: longitude };
+        const d = LANG_DATA[currentLang];
         
-        // 默认初始化中文
-        setLanguage('zh');
-    </script>
+        document.getElementById('geo-debug').innerText = `LAT: ${latitude.toFixed(5)} | LNG: ${longitude.toFixed(5)} (Acc: ${Math.round(pos.coords.accuracy)}m)`;
+
+        // 优先级状态记录
+        let activeDangerZone = null;  // 踩中的红区
+        let activeWarningZone = null; // 踩中的黄/灰区
+        let closestDist = Infinity;   // 最短距离
+        let closestZone = null;       // 距离最近的区
+
+        // 遍历整个瑞典的大数组
+        DANGER_ZONES.forEach(zone => {
+            // 计算预警距离
+            const dist = getDistance(latitude, longitude, zone.lat, zone.lng);
+            if (dist < closestDist) { 
+                closestDist = dist; 
+                closestZone = zone; 
+            }
+            
+            // 精确检测边界越界
+            if (zone.polygon && isPointInPolygon(userPoint, zone.polygon)) {
+                if (zone.type === 'red') {
+                    activeDangerZone = zone;
+                } else {
+                    activeWarningZone = zone;
+                }
+            }
+        });
+
+        // 获取 UI 元素
+        const bg = document.getElementById('app-bg');
+        const ball = document.getElementById('status-ball');
+        const ring = document.getElementById('radar-ring');
+        const icon = document.getElementById('status-icon');
+        const text = document.getElementById('status-text');
+        const tip = document.getElementById('tip-text');
+        const tag = document.getElementById('zone-tag');
+        const zoneNameSpan = document.getElementById('zone-name');
+
+        // ---- 状态判定渲染 ----
+
+        // 状态 1: 绝对危险 (踩入红区多边形)
+        if (activeDangerZone) {
+            bg.className = "bg-red-50 flex flex-col items-center justify-between min-h-screen p-6 transition-all-500";
+            ball.className = "w-48 h-48 bg-red-600 rounded-full flex flex-col items-center justify-center text-white shadow-2xl z-10 scale-105 transition-all-500";
+            ring.className = "absolute w-72 h-72 bg-red-400 rounded-full radar-ring";
+            icon.innerText = "🚫"; text.innerText = d.danger; 
+            tip.innerHTML = `<span class="font-bold text-red-600 block mb-1">【越界警告：最高级别】</span>${activeDangerZone.reason[currentLang]}`;
+            tag.style.opacity = "1"; zoneNameSpan.innerText = activeDangerZone.name[currentLang];
+            if(navigator.vibrate) navigator.vibrate([400, 100, 400]);
+
+        // 状态 2: 敏感警告 (踩入黄区，或距离任何区域中心小于600米)
+        } else if (activeWarningZone || closestDist < 600) {
+            let target = activeWarningZone || closestZone;
+            bg.className = "bg-amber-50 flex flex-col items-center justify-between min-h-screen p-6 transition-all-500";
+            ball.className = "w-48 h-48 bg-amber-500 rounded-full flex flex-col items-center justify-center text-white shadow-xl z-10 transition-all-500";
+            ring.className = "absolute w-72 h-72 bg-amber-300 rounded-full radar-ring";
+            icon.innerText = "⚠️"; text.innerText = d.warn; 
+            
+            let prefix = activeWarningZone ? "【灰色地带】你目前位于敏感机构范围内。" : "【接近预警】你正在靠近敏感区域。";
+            tip.innerHTML = `<span class="font-bold text-amber-600 block mb-1">${prefix}</span>${target.reason[currentLang]}`;
+            tag.style.opacity = "1"; zoneNameSpan.innerText = target.name[currentLang];
+
+        // 状态 3: 安全
+        } else {
+            bg.className = "bg-blue-50 flex flex-col items-center justify-between min-h-screen p-6 transition-all-500";
+            ball.className = "w-48 h-48 bg-blue-500 rounded-full flex flex-col items-center justify-center text-white shadow-xl z-10 transition-all-500";
+            ring.className = "absolute w-72 h-72 bg-blue-300 rounded-full radar-ring";
+            icon.innerText = "📸"; text.innerText = d.safe; tip.innerText = d.safeTip;
+            tag.style.opacity = "0";
+        }
+    }
+
+    // ==========================================
+    // 5. 语言切换与初始化
+    // ==========================================
+    function switchLang() {
+        if(currentLang === 'zh') currentLang = 'en';
+        else if(currentLang === 'en') currentLang = 'sv';
+        else currentLang = 'zh';
+        
+        document.getElementById('lang-btn').innerText = LANG_DATA[currentLang].btn;
+        if(lastPosition) updateUI(lastPosition);
+    }
+
+    function init() {
+        if ("geolocation" in navigator) {
+            navigator.geolocation.watchPosition(updateUI, 
+                (err) => { 
+                    document.getElementById('tip-text').innerText = "❌ 请允许获取定位权限以启用雷达。";
+                }, 
+                { enableHighAccuracy: true, maximumAge: 1000, timeout: 5000 }
+            );
+        } else {
+            document.getElementById('tip-text').innerText = "⚠️ 你的浏览器不支持定位功能。";
+        }
+    }
+
+    // 启动应用
+    init();
+</script>
 </body>
 </html>
