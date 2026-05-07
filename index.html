@@ -9,12 +9,21 @@
         .radar-ring { animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite; }
         @keyframes ping { 75%, 100% { transform: scale(1.5); opacity: 0; } }
         .transition-all-500 { transition: all 0.5s ease-in-out; }
-        body { touch-action: none; overscroll-behavior: none; }
+        body { 
+            touch-action: none; 
+            overscroll-behavior: none; 
+            /* Fix for mobile address bar heights */
+            height: 100vh;
+            height: 100dvh;
+        }
+        .safe-pb {
+            padding-bottom: env(safe-area-inset-bottom, 24px);
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans select-none overflow-hidden">
 
-<div id="app-bg" class="bg-blue-50 flex flex-col items-center justify-between min-h-screen p-6 transition-all-500">
+<div id="app-bg" class="bg-blue-50 flex flex-col items-center justify-between min-h-screen h-[100dvh] p-6 safe-pb transition-all-500">
     
     <div class="w-full flex justify-between items-center z-20">
         <div>
@@ -91,7 +100,7 @@
             gpsNoSupport: "⚠️ 你的浏览器不支持定位功能。",
             lat: "纬度", lng: "经度", acc: "精度",
             modalTitle: "数据详细说明",
-            modalDesc: "本工具基于公开地理信息提供重点位置的安全参考。其他城市的引导信息正在陆续录入中。",
+            modalDesc: "本工具基于公开地理信息提供重点位置的安全参考。其他城市的指引信息正在陆续录入中。",
             modalSource: "数据来源：基于 Overpass Turbo / OpenStreetMap 的公开地理数据。",
             modalDisclaimer: "免责声明：本工具仅供技术参考，数据可能存在偏移。任何情况下请以现场法律标志位为准，遵守瑞典法律。",
             comingSoon: "待更新",
@@ -120,104 +129,25 @@
     let currentLang = 'zh';
 
     const DANGER_ZONES = [
-        {
-            city: "Stockholm",
-            name: { zh: "瑞典国防军总部", en: "Swedish Armed Forces HQ", sv: "Försvarsmaktens HK" },
-            reason: { zh: "敏感机构，请留意周边黄色禁拍标志。", en: "Sensitive site. Watch for yellow signs.", sv: "Skyddsobjekt. Håll utkik efter gula skyltar." },
-            lat: 59.3459, lng: 18.0874, type: "yellow",
-            polygon: [[59.3463, 18.0863], [59.3454, 18.0872], [59.3457, 18.0884], [59.3466, 18.0875]]
-        },
-        {
-            city: "Stockholm",
-            name: { zh: "卡尔贝里军事学院", en: "Karlberg Military Academy", sv: "Militärhögskolan Karlberg" },
-            reason: { zh: "军事禁区，严禁拍照和越界。", en: "Military restricted area. No photos, no trespassing.", sv: "Militärt skyddsobjekt. Foto- och tillträdesförbud." },
-            lat: 59.3422, lng: 18.0175, type: "red",
-            polygon: [[59.3404, 18.0191], [59.3427, 18.0233], [59.3451, 18.0134], [59.3421, 18.0104]]
-        },
-        {
-            city: "Stockholm",
-            name: { zh: "国防大学", en: "Swedish Defence University", sv: "Försvarshögskolan" },
-            reason: { zh: "敏感机构，请留意周边黄色禁拍标志。", en: "Sensitive site. Watch for yellow signs.", sv: "Skyddsobjekt. Håll utkik efter gula skyltar." },
-            lat: 59.349, lng: 18.069, type: "yellow",
-            polygon: [[59.3495, 18.068], [59.3495, 18.070], [59.3485, 18.070], [59.3485, 18.068]]
-        },
-        {
-            city: "Stockholm",
-            name: { zh: "军事地堡 (Ursvik)", en: "Military Bunker", sv: "Bunker" },
-            reason: { zh: "军事禁区，严禁拍照。", en: "Restricted area. No photography.", sv: "Skyddsobjekt. Fotoförbud." },
-            lat: 59.435, lng: 17.900, type: "red",
-            polygon: [[59.4355, 17.899], [59.4355, 17.901], [59.4345, 17.901], [59.4345, 17.899]]
-        },
-        {
-            city: "Stockholm",
-            name: { zh: "国防部研究局 (FOI)", en: "FOI Research Agency", sv: "FOI" },
-            reason: { zh: "敏感设施，严格限制拍照。", en: "Sensitive facility. Strict photography rules.", sv: "Skyddsobjekt. Fotoförbud råder." },
-            lat: 59.4044, lng: 17.9452, type: "red",
-            polygon: [[59.4047, 17.9454], [59.4041, 17.9450], [59.4039, 17.9453], [59.4044, 17.9459]]
-        },
-        {
-            city: "Stockholm",
-            name: { zh: "国防军设施 (Lidingövägen)", en: "Swedish Armed Forces Facility", sv: "Försvarsmakten" },
-            reason: { zh: "军事禁区，严禁拍照。", en: "Restricted area. No photography.", sv: "Skyddsobjekt. Fotoförbud." },
-            lat: 59.3465, lng: 18.0895, type: "red",
-            polygon: [[59.3478, 18.0928], [59.3480, 18.0923], [59.3469, 18.0874], [59.3451, 18.0873]]
-        },
-        {
-            city: "Stockholm",
-            name: { zh: "国防军设施 (Gärdet)", en: "Swedish Armed Forces Facility", sv: "Försvarsmakten" },
-            reason: { zh: "军事禁区，严禁拍照。", en: "Restricted area. No photography.", sv: "Skyddsobjekt. Fotoförbud." },
-            lat: 59.3415, lng: 18.1004, type: "red",
-            polygon: [[59.3405, 18.0979], [59.3398, 18.1007], [59.3413, 18.1028], [59.3425, 18.1009]]
-        },
-        {
-            city: "Stockholm",
-            name: { zh: "国防部长街区", en: "Försvarsministern City Block", sv: "Försvarsministern City Block" },
-            reason: { zh: "敏感机构周边，拍照请留心。", en: "Sensitive site vicinity. Be mindful when photographing.", sv: "Området har koppling till försvar. Var aktsam vid fotografering." },
-            lat: 59.28, lng: 18.1332, type: "gray",
-            polygon: [[59.2799, 18.1316], [59.2793, 18.1342], [59.2805, 18.1321], [59.2800, 18.1315]]
-        },
-        {
-            city: "Stockholm",
-            name: { zh: "国防贷款街区", en: "Försvarslånet City Block", sv: "Försvarslånet City Block" },
-            reason: { zh: "敏感机构周边，拍照请留心。", en: "Sensitive site vicinity. Be mindful when photographing.", sv: "Området har koppling till försvar. Var aktsam vid fotografering." },
-            lat: 59.2926, lng: 17.9841, type: "gray",
-            polygon: [[59.2934, 17.9832], [59.2917, 17.9842], [59.2921, 17.9856], [59.2930, 17.9840]]
-        },
-        {
-            city: "Stockholm",
-            name: { zh: "斯德哥尔摩敏感设施", en: "Military Facility", sv: "Militär anläggning" },
-            reason: { zh: "军事禁区，严禁拍照。", en: "Restricted area. No photography.", sv: "Skyddsobjekt. Fotoförbud." },
-            lat: 59.3403, lng: 18.0248, type: "red",
-            polygon: [[59.3404, 18.0248], [59.3402, 18.0242], [59.3398, 18.0251], [59.3406, 18.0253]]
-        },
-        {
-            city: "Stockholm",
-            name: { zh: "57毫米礼炮礼台", en: "57 mm Saluting Battery", sv: "57 mm Saluteringsstation" },
-            reason: { zh: "军事禁区，严禁拍照。", en: "Restricted area. No photography.", sv: "Skyddsobjekt. Fotoförbud." },
-            lat: 59.3259, lng: 18.0805, type: "red",
-            polygon: [[59.3264, 18.0795], [59.3264, 18.0815], [59.3254, 18.0815], [59.3254, 18.0795]]
-        },
-        {
-            city: "Stockholm",
-            name: { zh: "瑞典社会保险局", en: "Social Insurance Agency", sv: "Försäkringskassan" },
-            reason: { zh: "政府机构周边，拍照请留心。", en: "Government site vicinity. Be mindful when photographing.", sv: "Koppling till statlig verksamhet. Var aktsam vid fotografering." },
-            lat: 59.4061, lng: 17.9485, type: "gray",
-            polygon: [[59.4066, 17.9475], [59.4066, 17.9495], [59.4056, 17.9495], [59.4056, 17.9475]]
-        },
-        {
-            city: "Stockholm",
-            name: { zh: "军事地堡", en: "Military Bunker", sv: "Bunker" },
-            reason: { zh: "军事禁区，严禁拍照。", en: "Restricted area. No photography.", sv: "Skyddsobjekt. Fotoförbud." },
-            lat: 59.4336, lng: 17.8935, type: "red",
-            polygon: [[59.4341, 17.8925], [59.4341, 17.8945], [59.4331, 17.8945], [59.4331, 17.8925]]
-        },
-        {
-            city: "Stockholm",
-            name: { zh: "军事战壕", en: "Military Trench", sv: "Skyttegrav" },
-            reason: { zh: "军事禁区，严禁拍照。", en: "Restricted area. No photography.", sv: "Skyddsobjekt. Fotoförbud." },
-            lat: 59.3606, lng: 18.0595, type: "red",
-            polygon: [[59.3611, 18.0585], [59.3611, 18.0605], [59.3601, 18.0605], [59.3601, 18.0585]]
-        }
+        { city: "Stockholm", name: { zh: "瑞典国防军总部", en: "Swedish Armed Forces HQ", sv: "Försvarsmaktens HK" }, reason: { zh: "敏感机构，请留意周边黄色禁拍标志。", en: "Sensitive site. Watch for yellow signs.", sv: "Skyddsobjekt. Håll utkik efter gula skyltar." }, lat: 59.3459, lng: 18.0874, type: "yellow", polygon: [[59.3463, 18.0863], [59.3454, 18.0872], [59.3457, 18.0884], [59.3466, 18.0875]] },
+        { city: "Stockholm", name: { zh: "卡尔贝里军事学院", en: "Karlberg Military Academy", sv: "Militärhögskolan Karlberg" }, reason: { zh: "军事禁区，严禁拍照和越界。", en: "Military restricted area. No photos, no trespassing.", sv: "Militärt skyddsobjekt. Foto- och tillträdesförbud." }, lat: 59.3422, lng: 18.0175, type: "red", polygon: [[59.3404, 18.0191], [59.3427, 18.0233], [59.3451, 18.0134], [59.3421, 18.0104]] },
+        { city: "Stockholm", name: { zh: "瑞典国防大学", en: "Swedish Defence University", sv: "Försvarshögskolan" }, reason: { zh: "敏感机构，请留意周边黄色禁拍标志。", en: "Sensitive site. Watch for yellow signs.", sv: "Skyddsobjekt. Håll utkik efter gula skyltar." }, lat: 59.349, lng: 18.069, type: "yellow", polygon: [[59.3495, 18.068], [59.3495, 18.070], [59.3485, 18.070], [59.3485, 18.068]] },
+        { city: "Stockholm", name: { zh: "瑞典国防部研究局 (FOI)", en: "FOI Research Agency", sv: "FOI" }, reason: { zh: "军事禁区，严禁拍照。", en: "Sensitive facility. Strict photography rules.", sv: "Skyddsobjekt. Fotoförbud råder." }, lat: 59.4044, lng: 17.9452, type: "red", polygon: [[59.4047, 17.9454], [59.4041, 17.9450], [59.4039, 17.9453], [59.4044, 17.9459]] },
+        { city: "Stockholm", name: { zh: "国防军设施 (Lidingövägen)", en: "Swedish Armed Forces Facility", sv: "Försvarsmakten" }, reason: { zh: "军事禁区，严禁拍照。", en: "Restricted area. No photography.", sv: "Skyddsobjekt. Fotoförbud." }, lat: 59.3465, lng: 18.0895, type: "red", polygon: [[59.3478, 18.0928], [59.3480, 18.0923], [59.3469, 18.0874], [59.3451, 18.0873]] },
+        { city: "Stockholm", name: { zh: "国防军设施 (Gärdet)", en: "Swedish Armed Forces Facility", sv: "Försvarsmakten" }, reason: { zh: "军事禁区，严禁拍照。", en: "Restricted area. No photography.", sv: "Skyddsobjekt. Fotoförbud." }, lat: 59.3415, lng: 18.1004, type: "red", polygon: [[59.3405, 18.0979], [59.3398, 18.1007], [59.3413, 18.1028], [59.3425, 18.1009]] },
+        { city: "Stockholm", name: { zh: "国防部长街区", en: "Försvarsministern City Block", sv: "Försvarsministern City Block" }, reason: { zh: "敏感机构周边，拍照请留心。", en: "Sensitive site vicinity. Be mindful when photographing.", sv: "Området har koppling till försvar. Var aktsam vid fotografering." }, lat: 59.28, lng: 18.1332, type: "gray", polygon: [[59.2799, 18.1316], [59.2793, 18.1342], [59.2805, 18.1321], [59.2800, 18.1315]] },
+        { city: "Stockholm", name: { zh: "国防贷款街区", en: "Försvarslånet City Block", sv: "Försvarslånet City Block" }, reason: { zh: "敏感机构周边，拍照请留心。", en: "Sensitive site vicinity. Be mindful when photographing.", sv: "Området har koppling till försvar. Var aktsam vid fotografering." }, lat: 59.2926, lng: 17.9841, type: "gray", polygon: [[59.2934, 17.9832], [59.2917, 17.9842], [59.2921, 17.9856], [59.2930, 17.9840]] },
+        { city: "Stockholm", name: { zh: "斯德哥尔摩敏感设施", en: "Military Facility", sv: "Militär anläggning" }, reason: { zh: "军事禁区，严禁拍照。", en: "Restricted area. No photography.", sv: "Skyddsobjekt. Fotoförbud." }, lat: 59.3403, lng: 18.0248, type: "red", polygon: [[59.3404, 18.0248], [59.3402, 18.0242], [59.3398, 18.0251], [59.3406, 18.0253]] },
+        { city: "Stockholm", name: { zh: "军装装备有限公司", en: "Military Outfitter", sv: "Militär Ekiperings AB" }, reason: { zh: "政府机构周边，拍照请留心。", en: "Government site vicinity. Be mindful when photographing.", sv: "Koppling till statlig verksamhet. Var aktsam vid fotografering." }, lat: 59.3388, lng: 18.0521, type: "gray", polygon: [[59.3393, 18.0511], [59.3393, 18.0531], [59.3383, 18.0531], [59.3383, 18.0511]] },
+        { city: "Stockholm", name: { zh: "57毫米礼炮礼台 (1)", en: "Saluting Battery (1)", sv: "Saluteringsstation (1)" }, reason: { zh: "军事禁区，严禁拍照。", en: "Restricted area. No photography.", sv: "Skyddsobjekt. Fotoförbud." }, lat: 59.32599, lng: 18.08059, type: "red", polygon: [[59.3264, 18.0795], [59.3264, 18.0815], [59.3254, 18.0815], [59.3254, 18.0795]] },
+        { city: "Stockholm", name: { zh: "57毫米礼炮礼台 (2)", en: "Saluting Battery (2)", sv: "Saluteringsstation (2)" }, reason: { zh: "军事禁区，严禁拍照。", en: "Restricted area. No photography.", sv: "Skyddsobjekt. Fotoförbud." }, lat: 59.32596, lng: 18.08059, type: "red", polygon: [[59.3264, 18.0795], [59.3264, 18.0815], [59.3254, 18.0815], [59.3254, 18.0795]] },
+        { city: "Stockholm", name: { zh: "57毫米礼炮礼台 (3)", en: "Saluting Battery (3)", sv: "Saluteringsstation (3)" }, reason: { zh: "军事禁区，严禁拍照。", en: "Restricted area. No photography.", sv: "Skyddsobjekt. Fotoförbud." }, lat: 59.32593, lng: 18.08060, type: "red", polygon: [[59.3264, 18.0795], [59.3264, 18.0815], [59.3254, 18.0815], [59.3254, 18.0795]] },
+        { city: "Stockholm", name: { zh: "军事地堡 (Ursvik)", en: "Military Bunker", sv: "Bunker" }, reason: { zh: "军事禁区，严禁拍照。", en: "Restricted area. No photography.", sv: "Skyddsobjekt. Fotoförbud." }, lat: 59.4350, lng: 17.9006, type: "red", polygon: [[59.4355, 17.8996], [59.4355, 17.9016], [59.4345, 17.9016], [59.4345, 17.8996]] },
+        { city: "Stockholm", name: { zh: "瑞典社会保险局", en: "Social Insurance Agency", sv: "Försäkringskassan" }, reason: { zh: "政府机构周边，拍照请留心。", en: "Government site vicinity. Be mindful when photographing.", sv: "Koppling till statlig verksamhet. Var aktsam vid fotografering." }, lat: 59.4061, lng: 17.9485, type: "gray", polygon: [[59.4066, 17.9475], [59.4066, 17.9495], [59.4056, 17.9495], [59.4056, 17.9475]] },
+        { city: "Stockholm", name: { zh: "废弃军事地堡 (1)", en: "Abandoned Bunker (1)", sv: "Bunker (1)" }, reason: { zh: "军事禁区，严禁拍照。", en: "Restricted area. No photography.", sv: "Skyddsobjekt. Fotoförbud." }, lat: 59.4336, lng: 17.8935, type: "red", polygon: [[59.4341, 17.8925], [59.4341, 17.8945], [59.4331, 17.8945], [59.4331, 17.8925]] },
+        { city: "Stockholm", name: { zh: "废弃军事地堡 (2)", en: "Abandoned Bunker (2)", sv: "Bunker (2)" }, reason: { zh: "军事禁区，严禁拍照。", en: "Restricted area. No photography.", sv: "Skyddsobjekt. Fotoförbud." }, lat: 59.4329, lng: 17.8924, type: "red", polygon: [[59.4334, 17.8914], [59.4334, 17.8934], [59.4324, 17.8934], [59.4324, 17.8914]] },
+        { city: "Stockholm", name: { zh: "军事地堡", en: "Military Bunker", sv: "Bunker" }, reason: { zh: "军事禁区，严禁拍照。", en: "Restricted area. No photography.", sv: "Skyddsobjekt. Fotoförbud." }, lat: 59.4330, lng: 17.8938, type: "red", polygon: [[59.4335, 17.8928], [59.4335, 17.8948], [59.4325, 17.8948], [59.4325, 17.8928]] },
+        { city: "Stockholm", name: { zh: "军事战壕", en: "Military Trench", sv: "Skyttegrav" }, reason: { zh: "军事禁区，严禁拍照。", en: "Restricted area. No photography.", sv: "Skyddsobjekt. Fotoförbud." }, lat: 59.3606, lng: 18.0595, type: "red", polygon: [[59.3611, 18.0585], [59.3611, 18.0605], [59.3601, 18.0605], [59.3601, 18.0585]] }
     ];
 
     const CITY_STATUS = [
