@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>瑞典拍照小卫士 | Sweden Lens Buddy</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .radar-pulse { animation: pulse 2s infinite; }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.6; }
+            70% { transform: scale(1.4); opacity: 0; }
+            100% { transform: scale(1); opacity: 0; }
+        }
+        .bg-safe { background-color: #f0f9ff; }
+        .bg-warn { background-color: #fffbeb; }
+        .bg-danger { background-color: #fef2f2; }
+    </style>
+</head>
+<body id="body-bg" class="bg-safe flex flex-col items-center justify-between min-h-screen p-6 text-slate-800 transition-colors duration-500">
+
+    <div class="text-center mt-6">
+        <h1 class="text-2xl font-bold text-slate-900">瑞典拍照小卫士</h1>
+        <p id="sub-status" class="text-slate-500 text-sm mt-1">正在实时监测地理位置...</p>
+    </div>
+
+    <!-- 核心雷达 -->
+    <div class="relative flex items-center justify-center">
+        <div id="radar-ring" class="absolute w-64 h-64 bg-blue-400 rounded-full opacity-20 radar-pulse"></div>
+        <div id="main-status-node" class="w-48 h-48 bg-blue-500 rounded-full flex flex-col items-center justify-center text-white shadow-2xl z-10 transition-all duration-500">
+            <span id="status-icon" class="text-5xl mb-2">📸</span>
+            <span id="status-text" class="font-bold text-lg">可以拍照</span>
+        </div>
+    </div>
+
+    <!-- 贴心文案卡片 -->
+    <div class="w-full max-w-sm">
+        <div id="tip-card" class="bg-white p-5 rounded-3xl shadow-xl border border-slate-100">
+            <h3 class="font-bold text-slate-900 mb-2 flex items-center">
+                <span class="mr-2">💡</span> 学长贴士
+            </h3>
+            <p id="tip-text" class="text-slate-600 leading-relaxed text-sm">
+                当前环境安全。瑞典法律规定，除了受保护对象外，您可以自由拍照。建议避免对着路人正脸哦。
+            </p>
+        </div>
+        
+        <p class="text-center text-xs text-slate-400 mt-4 px-4">
+            * 本工具仅供参考。在瑞典，物理警示牌具有最高法律效力。看到“划掉的相机”标志请务必收手机。
+        </p>
+    </div>
+
+    <script>
+        // 内置雷区数据 (可根据 Overpass 数据继续扩充)
+        const SENSITIVE_ZONES = [
+            { name: "国防学院/KTH", lat: 59.3456, lng: 18.0715, r: 250 },
+            { name: "国防部 Tre Vapen", lat: 59.3386, lng: 18.1023, r: 300 },
+            { name: "皇宫特定区", lat: 59.3268, lng: 18.0717, r: 150 },
+            { name: "电台/电视台区", lat: 59.3347, lng: 18.1005, r: 200 }
+        ];
+
+        function getDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        }
+
+        function updateStatus(position) {
+            const { latitude, longitude } = position.coords;
+            let minDistance = Infinity;
+            let currentZone = null;
+
+            SENSITIVE_ZONES.forEach(zone => {
+                const dist = getDistance(latitude, longitude, zone.lat, zone.lng);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    currentZone = zone;
+                }
+            });
+
+            const body = document.getElementById('body-bg');
+            const ring = document.getElementById('radar-ring');
+            const node = document.getElementById('main-status-node');
+            const icon = document.getElementById('status-icon');
+            const text = document.getElementById('status-text');
+            const tip = document.getElementById('tip-text');
+            const sub = document.getElementById('sub-status');
+
+            sub.innerText = `当前坐标: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+
+            if (minDistance < 100) { // 红色禁区
+                body.className = "bg-danger flex flex-col items-center justify-between min-h-screen p-6 text-slate-800";
+                node.className = "w-48 h-48 bg-red-600 rounded-full flex flex-col items-center justify-center text-white shadow-2xl z-10 scale-110";
+                ring.className = "absolute w-64 h-64 bg-red-400 rounded-full opacity-40 radar-pulse";
+                icon.innerText = "🚫";
+                text.innerText = "绝对禁拍";
+                tip.innerText = "紧急！你正位于受保护对象（Skyddsobjekt）附近。请立刻收起手机并放入包内，不要对着建筑有任何举机动作！";
+                if(navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
+            } else if (minDistance < 300) { // 黄色预警
+                body.className = "bg-warn flex flex-col items-center justify-between min-h-screen p-6 text-slate-800";
+                node.className = "w-48 h-48 bg-yellow-500 rounded-full flex flex-col items-center justify-center text-white shadow-2xl z-10";
+                ring.className = "absolute w-64 h-64 bg-yellow-400 rounded-full opacity-30 radar-pulse";
+                icon.innerText = "⚠️";
+                text.innerText = "多加留意";
+                tip.innerText = `靠近敏感区域：${currentZone.name}。请抬头观察四周，寻找带有照相机划线标志的黄色圆牌，看到标志请勿拍照。`;
+            } else { // 绿色安全
+                body.className = "bg-safe flex flex-col items-center justify-between min-h-screen p-6 text-slate-800";
+                node.className = "w-48 h-48 bg-blue-500 rounded-full flex flex-col items-center justify-center text-white shadow-2xl z-10";
+                ring.className = "absolute w-64 h-64 bg-blue-400 rounded-full opacity-20 radar-pulse";
+                icon.innerText = "📸";
+                text.innerText = "可以拍照";
+                tip.innerText = "环境安全。您可以尽情记录美景，但建议避开警察、军警或政府机构的窗户。";
+            }
+        }
+
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(updateStatus, (err) => {
+                document.getElementById('tip-text').innerText = "无法获取位置信息，请确保已开启 GPS 权限并允许浏览器访问地理位置。";
+            }, { enableHighAccuracy: true });
+        } else {
+            alert("您的浏览器不支持地理定位。");
+        }
+    </script>
+</body>
+</html>
