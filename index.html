@@ -6,12 +6,8 @@
     <title>Sweden Lens Buddy - Skyddsobjekt Radar</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .radar-ring {
-            animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
-        }
-        @keyframes ping {
-            75%, 100% { transform: scale(1.5); opacity: 0; }
-        }
+        .radar-ring { animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite; }
+        @keyframes ping { 75%, 100% { transform: scale(1.5); opacity: 0; } }
         .transition-all-500 { transition: all 0.5s ease-in-out; }
     </style>
 </head>
@@ -23,10 +19,11 @@
     <div class="w-full flex justify-between items-center z-20">
         <div>
             <h1 class="text-xl font-bold tracking-tight text-gray-800">Lens Buddy 🇸🇪</h1>
-            <!-- 动态统计标签 -->
-            <p id="stats-counter" class="text-xs text-blue-600 font-medium mt-1 bg-white/60 px-2 py-0.5 rounded-full inline-block shadow-sm">
-                🛡️ Loading zones...
-            </p>
+            <!-- 🌟 改进：变为可点击的按钮 -->
+            <button onclick="openModal()" class="text-xs text-blue-600 font-medium mt-1 bg-white/70 px-2 py-1 rounded-full shadow-sm hover:bg-white transition flex items-center gap-1 active:scale-95">
+                <span id="stats-counter-text">🛡️ Loading...</span> 
+                <svg class="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </button>
         </div>
         <button onclick="switchLang()" class="bg-white/80 backdrop-blur shadow-sm px-4 py-2 rounded-full font-bold text-sm hover:bg-gray-100 transition">
             🌐 <span id="lang-btn">EN</span>
@@ -41,7 +38,6 @@
             <span id="status-text" class="text-2xl font-bold tracking-wider">SAFE</span>
         </div>
         
-        <!-- 标签：显示触发的敏感区名称 -->
         <div id="zone-tag" class="absolute top-4 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-1 rounded-full shadow-lg opacity-0 transition-opacity duration-300 z-20 pointer-events-none whitespace-nowrap">
             📍 <span id="zone-name">Unknown Zone</span>
         </div>
@@ -53,27 +49,106 @@
             Getting GPS signal...
         </p>
         <p id="geo-debug" class="text-[10px] text-gray-400 text-center mt-3 font-mono">
-            LAT: -- | LNG: --
+            LAT: -- | LNG: -- | Acc: --
+        </p>
+    </div>
+</div>
+
+<!-- 🌟 覆盖范围弹窗 (Modal) -->
+<div id="coverage-modal" class="fixed inset-0 bg-black/40 z-50 hidden flex items-center justify-center backdrop-blur-sm p-4 opacity-0 transition-opacity duration-300">
+    <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm transform scale-95 transition-transform duration-300" id="modal-content">
+        <div class="flex justify-between items-center mb-5">
+            <h2 class="text-xl font-bold text-gray-800" id="modal-title">当前覆盖范围</h2>
+            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-800 font-bold text-2xl transition">&times;</button>
+        </div>
+        
+        <ul class="space-y-3">
+            <li class="flex items-center justify-between p-2 bg-green-50 rounded-lg border border-green-100">
+                <span class="font-bold text-green-800 flex items-center gap-2">✅ Stockholm</span>
+                <span class="text-xs bg-green-200 text-green-800 px-2 py-1 rounded-full font-medium" id="modal-sth-count"></span>
+            </li>
+            <li class="flex items-center justify-between p-2 opacity-60">
+                <span class="font-medium text-gray-600 flex items-center gap-2">⏳ Göteborg</span>
+                <span class="text-[10px] bg-gray-100 text-gray-500 px-2 py-1 rounded-full uppercase font-bold tracking-wider modal-soon">即将上线</span>
+            </li>
+            <li class="flex items-center justify-between p-2 opacity-60">
+                <span class="font-medium text-gray-600 flex items-center gap-2">⏳ Uppsala</span>
+                <span class="text-[10px] bg-gray-100 text-gray-500 px-2 py-1 rounded-full uppercase font-bold tracking-wider modal-soon">即将上线</span>
+            </li>
+            <li class="flex items-center justify-between p-2 opacity-60">
+                <span class="font-medium text-gray-600 flex items-center gap-2">⏳ Karlskrona</span>
+                <span class="text-[10px] bg-gray-100 text-gray-500 px-2 py-1 rounded-full uppercase font-bold tracking-wider modal-soon">即将上线</span>
+            </li>
+        </ul>
+        
+        <p class="text-xs text-gray-500 mt-5 leading-relaxed bg-gray-50 p-3 rounded-lg" id="modal-desc">
+            目前已完成斯德哥尔摩区域的高精度边界测绘，其他城市数据正在加紧校对中。
         </p>
     </div>
 </div>
 
 <script>
     // ==========================================
-    // 1. 多语言配置字典
+    // 1. 深度多语言字典 (i18n)
     // ==========================================
     const LANG_DATA = {
-        en: { safe: "SAFE", danger: "NO PHOTO", warn: "WARNING", safeTip: "You are outside any known restricted areas. Feel free to take photos, but always look out for yellow 'Skyddsobjekt' signs.", btn: "EN" },
-        zh: { safe: "安全", danger: "严禁拍照", warn: "敏感区域", safeTip: "你目前处于安全区域，可以自由拍照。但请始终留意现实中是否有黄色的禁拍标志。", btn: "中文" },
-        sv: { safe: "SÄKERT", danger: "FOTOFÖRBUD", warn: "VARNING", safeTip: "Du befinner dig utanför kända skyddsobjekt. Fotografera fritt, men håll utkik efter gula skyltar.", btn: "SV" }
+        en: { 
+            safe: "SAFE", danger: "NO PHOTO", warn: "WARNING", 
+            safeTip: "You are outside any known restricted areas. Feel free to take photos, but always look out for yellow 'Skyddsobjekt' signs.", 
+            btn: "EN",
+            coverage: "Coverage: ",
+            zones: " zones",
+            redAlert: "【TRESPASS WARNING】 ",
+            greyZone: "【Grey Zone】 You are within a sensitive institution.",
+            approachWarn: "【Approaching】 You are nearing a restricted area.",
+            gpsLoading: "Getting GPS signal...",
+            gpsError: "❌ Please allow location access.",
+            gpsNoSupport: "⚠️ Geolocation not supported.",
+            lat: "LAT", lng: "LNG", acc: "Acc",
+            modalTitle: "Active Coverage",
+            modalDesc: "We currently provide highly accurate polygon geofencing for Stockholm. Other regions are actively being mapped.",
+            comingSoon: "COMING SOON"
+        },
+        zh: { 
+            safe: "安全", danger: "严禁拍照", warn: "敏感区域", 
+            safeTip: "你目前处于安全区域，可以自由拍照。但请始终留意现实中是否有黄色的禁拍标志。", 
+            btn: "中文",
+            coverage: "当前覆盖区域: ",
+            zones: " 个敏感区",
+            redAlert: "【越界警告：最高级别】 ",
+            greyZone: "【灰色地带】你目前位于敏感机构范围内。",
+            approachWarn: "【接近预警】你正在靠近敏感区域。",
+            gpsLoading: "正在获取 GPS 信号...",
+            gpsError: "❌ 请允许获取定位权限以启用雷达。",
+            gpsNoSupport: "⚠️ 你的浏览器不支持定位功能。",
+            lat: "纬度", lng: "经度", acc: "精度",
+            modalTitle: "雷达覆盖范围",
+            modalDesc: "目前已完成斯德哥尔摩区域的高精度边界测绘，其他城市数据正在加紧校对中。",
+            comingSoon: "即将上线"
+        },
+        sv: { 
+            safe: "SÄKERT", danger: "FOTOFÖRBUD", warn: "VARNING", 
+            safeTip: "Du befinner dig utanför kända skyddsobjekt. Fotografera fritt, men håll utkik efter gula skyltar.", 
+            btn: "SV",
+            coverage: "Täckning: ",
+            zones: " zoner",
+            redAlert: "【INTRÅNGSVARNING】 ",
+            greyZone: "【Gråzon】 Du befinner dig inom ett känsligt område.",
+            approachWarn: "【Närmar sig】 Du närmar dig ett skyddsobjekt.",
+            gpsLoading: "Söker GPS-signal...",
+            gpsError: "❌ Vänligen tillåt platsåtkomst.",
+            gpsNoSupport: "⚠️ Geolokalisering stöds inte.",
+            lat: "LAT", lng: "LON", acc: "Noggrannhet",
+            modalTitle: "Aktiv Täckning",
+            modalDesc: "Vi erbjuder för närvarande detaljerad geofencing för Stockholm. Fler städer kartläggs.",
+            comingSoon: "KOMMER SNART"
+        }
     };
     let currentLang = 'zh';
 
     // ==========================================
-    // 2. 模块化城市数据配置区 (把你从 AI Studio 生成的数据贴到对应的数组里)
+    // 2. 城市数据配置区
     // ==========================================
-
-    // 示例：斯德哥尔摩数据
     const STOCKHOLM_ZONES = [
         {
         "name": {
@@ -586,27 +661,42 @@
         }
     ];
 
-    // 示例：哥德堡数据 (等你提取完了贴这里)
     const GOTHENBURG_ZONES = []; 
-    
-    // 示例：乌普萨拉数据
     const UPPSALA_ZONES = [];
 
-    // 🌟 终极合并：将所有城市的数组组合成一个大监控网
-    const DANGER_ZONES = [
-        ...STOCKHOLM_ZONES,
-        ...GOTHENBURG_ZONES,
-        ...UPPSALA_ZONES
-    ];
-
-    // 初始化显示保护点数量
-    document.getElementById('stats-counter').innerText = `🛡️ 全瑞典监控中: ${DANGER_ZONES.length} 个区域`;
+    const DANGER_ZONES = [...STOCKHOLM_ZONES, ...GOTHENBURG_ZONES, ...UPPSALA_ZONES];
 
     // ==========================================
-    // 3. 核心算法区
+    // 3. UI 静态文字全量更新逻辑
     // ==========================================
+    function updateStaticText() {
+        const d = LANG_DATA[currentLang];
+        
+        // 更新顶部 coverage 按钮文本
+        document.getElementById('stats-counter-text').innerText = `🛡️ ${d.coverage} Stockholm (${DANGER_ZONES.length}${d.zones})`;
+        
+        // 更新弹窗文本
+        document.getElementById('modal-title').innerText = d.modalTitle;
+        document.getElementById('modal-desc').innerText = d.modalDesc;
+        document.getElementById('modal-sth-count').innerText = `${DANGER_ZONES.length}${d.zones}`;
+        
+        // 更新所有“Coming soon”标签
+        document.querySelectorAll('.modal-soon').forEach(el => {
+            el.innerText = d.comingSoon;
+        });
 
-    // Haversine 公式计算两个经纬度之间的直线距离（米）
+        // 如果还没有 GPS 信号，确保提示文字也跟着切换语言
+        if (!lastPosition) {
+            document.getElementById('tip-text').innerText = d.gpsLoading;
+        } else {
+            // 如果已经有 GPS，强行刷新一次雷达 UI 来翻译动态文本
+            updateUI(lastPosition); 
+        }
+    }
+
+    // ==========================================
+    // 4. 核心算法 (测距 & 射线碰撞)
+    // ==========================================
     function getDistance(lat1, lon1, lat2, lon2) {
         const R = 6371e3; 
         const φ1 = lat1 * Math.PI/180, φ2 = lat2 * Math.PI/180;
@@ -615,13 +705,12 @@
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     }
 
-    // Ray-Casting 射线投射算法：判断点是否在多边形内部
     function isPointInPolygon(point, polygon) {
         if (!polygon || polygon.length < 3) return false;
         let x = point.lng, y = point.lat;
         let inside = false;
         for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-            let xi = polygon[i][1], yi = polygon[i][0]; // 提取多边形上的经度(lng)和纬度(lat)
+            let xi = polygon[i][1], yi = polygon[i][0]; 
             let xj = polygon[j][1], yj = polygon[j][0];
             let intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
             if (intersect) inside = !inside;
@@ -630,45 +719,36 @@
     }
 
     // ==========================================
-    // 4. UI 更新逻辑与位置监听
+    // 5. 动态 UI 更新逻辑
     // ==========================================
-
     let lastPosition = null;
 
     function updateUI(pos) {
         lastPosition = pos;
-        const { latitude, longitude } = pos.coords;
+        const { latitude, longitude, accuracy } = pos.coords;
         const userPoint = { lat: latitude, lng: longitude };
         const d = LANG_DATA[currentLang];
         
-        document.getElementById('geo-debug').innerText = `LAT: ${latitude.toFixed(5)} | LNG: ${longitude.toFixed(5)} (Acc: ${Math.round(pos.coords.accuracy)}m)`;
+        // 🌟 改进：底部的 Debug 信息也做了全面翻译
+        document.getElementById('geo-debug').innerText = `${d.lat}: ${latitude.toFixed(5)} | ${d.lng}: ${longitude.toFixed(5)} | ${d.acc}: ${Math.round(accuracy)}m`;
 
-        // 优先级状态记录
-        let activeDangerZone = null;  // 踩中的红区
-        let activeWarningZone = null; // 踩中的黄/灰区
-        let closestDist = Infinity;   // 最短距离
-        let closestZone = null;       // 距离最近的区
+        let activeDangerZone = null;  
+        let activeWarningZone = null; 
+        let closestDist = Infinity;   
+        let closestZone = null;       
 
-        // 遍历整个瑞典的大数组
         DANGER_ZONES.forEach(zone => {
-            // 计算预警距离
             const dist = getDistance(latitude, longitude, zone.lat, zone.lng);
             if (dist < closestDist) { 
                 closestDist = dist; 
                 closestZone = zone; 
             }
-            
-            // 精确检测边界越界
             if (zone.polygon && isPointInPolygon(userPoint, zone.polygon)) {
-                if (zone.type === 'red') {
-                    activeDangerZone = zone;
-                } else {
-                    activeWarningZone = zone;
-                }
+                if (zone.type === 'red') activeDangerZone = zone;
+                else activeWarningZone = zone;
             }
         });
 
-        // 获取 UI 元素
         const bg = document.getElementById('app-bg');
         const ball = document.getElementById('status-ball');
         const ring = document.getElementById('radar-ring');
@@ -678,19 +758,16 @@
         const tag = document.getElementById('zone-tag');
         const zoneNameSpan = document.getElementById('zone-name');
 
-        // ---- 状态判定渲染 ----
-
-        // 状态 1: 绝对危险 (踩入红区多边形)
         if (activeDangerZone) {
             bg.className = "bg-red-50 flex flex-col items-center justify-between min-h-screen p-6 transition-all-500";
             ball.className = "w-48 h-48 bg-red-600 rounded-full flex flex-col items-center justify-center text-white shadow-2xl z-10 scale-105 transition-all-500";
             ring.className = "absolute w-72 h-72 bg-red-400 rounded-full radar-ring";
             icon.innerText = "🚫"; text.innerText = d.danger; 
-            tip.innerHTML = `<span class="font-bold text-red-600 block mb-1">【越界警告：最高级别】</span>${activeDangerZone.reason[currentLang]}`;
+            // 🌟 改进：使用字典中的红区前缀
+            tip.innerHTML = `<span class="font-bold text-red-600 block mb-1">${d.redAlert}</span>${activeDangerZone.reason[currentLang]}`;
             tag.style.opacity = "1"; zoneNameSpan.innerText = activeDangerZone.name[currentLang];
             if(navigator.vibrate) navigator.vibrate([400, 100, 400]);
 
-        // 状态 2: 敏感警告 (踩入黄区，或距离任何区域中心小于600米)
         } else if (activeWarningZone || closestDist < 600) {
             let target = activeWarningZone || closestZone;
             bg.className = "bg-amber-50 flex flex-col items-center justify-between min-h-screen p-6 transition-all-500";
@@ -698,11 +775,11 @@
             ring.className = "absolute w-72 h-72 bg-amber-300 rounded-full radar-ring";
             icon.innerText = "⚠️"; text.innerText = d.warn; 
             
-            let prefix = activeWarningZone ? "【灰色地带】你目前位于敏感机构范围内。" : "【接近预警】你正在靠近敏感区域。";
+            // 🌟 改进：使用字典中的灰区和预警前缀
+            let prefix = activeWarningZone ? d.greyZone : d.approachWarn;
             tip.innerHTML = `<span class="font-bold text-amber-600 block mb-1">${prefix}</span>${target.reason[currentLang]}`;
             tag.style.opacity = "1"; zoneNameSpan.innerText = target.name[currentLang];
 
-        // 状态 3: 安全
         } else {
             bg.className = "bg-blue-50 flex flex-col items-center justify-between min-h-screen p-6 transition-all-500";
             ball.className = "w-48 h-48 bg-blue-500 rounded-full flex flex-col items-center justify-center text-white shadow-xl z-10 transition-all-500";
@@ -713,7 +790,7 @@
     }
 
     // ==========================================
-    // 5. 语言切换与初始化
+    // 6. 交互功能：语言切换 & 弹窗逻辑
     // ==========================================
     function switchLang() {
         if(currentLang === 'zh') currentLang = 'en';
@@ -721,23 +798,48 @@
         else currentLang = 'zh';
         
         document.getElementById('lang-btn').innerText = LANG_DATA[currentLang].btn;
-        if(lastPosition) updateUI(lastPosition);
+        updateStaticText(); // 切换语言时，同步刷新所有静态文字
     }
 
+    // 弹窗控制逻辑 (带一点过渡动画)
+    function openModal() {
+        const modal = document.getElementById('coverage-modal');
+        const content = document.getElementById('modal-content');
+        modal.classList.remove('hidden');
+        // 延迟一帧执行透明度和缩放变换，以触发 CSS 动画
+        requestAnimationFrame(() => {
+            modal.classList.remove('opacity-0');
+            content.classList.remove('scale-95');
+        });
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('coverage-modal');
+        const content = document.getElementById('modal-content');
+        modal.classList.add('opacity-0');
+        content.classList.add('scale-95');
+        // 等待动画结束再隐藏
+        setTimeout(() => { modal.classList.add('hidden'); }, 300);
+    }
+
+    // ==========================================
+    // 7. 初始化程序
+    // ==========================================
     function init() {
+        updateStaticText(); // 页面刚加载时，先用默认语言渲染一遍静态文字
+        
         if ("geolocation" in navigator) {
             navigator.geolocation.watchPosition(updateUI, 
                 (err) => { 
-                    document.getElementById('tip-text').innerText = "❌ 请允许获取定位权限以启用雷达。";
+                    document.getElementById('tip-text').innerText = LANG_DATA[currentLang].gpsError;
                 }, 
                 { enableHighAccuracy: true, maximumAge: 1000, timeout: 5000 }
             );
         } else {
-            document.getElementById('tip-text').innerText = "⚠️ 你的浏览器不支持定位功能。";
+            document.getElementById('tip-text').innerText = LANG_DATA[currentLang].gpsNoSupport;
         }
     }
 
-    // 启动应用
     init();
 </script>
 </body>
