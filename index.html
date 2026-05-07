@@ -49,9 +49,9 @@
         </div>
     </div>
 
-    <div class="bg-white/80 backdrop-blur w-full p-5 rounded-2xl shadow-lg z-20">
-        <div id="tip-text" class="text-gray-600 text-sm leading-relaxed text-center min-h-[3.5rem] flex flex-col items-center justify-center"></div>
-        <div id="geo-debug" class="text-[10px] text-gray-400 text-center mt-3 font-mono opacity-60"></div>
+    <div class="bg-white/90 backdrop-blur w-full p-4 rounded-2xl shadow-lg z-20 mb-2">
+        <div id="tip-text" class="text-gray-700 text-sm leading-relaxed text-center min-h-[4rem] flex flex-col items-center justify-center px-2"></div>
+        <div id="geo-debug" class="text-[10px] text-gray-400 text-center mt-2 font-mono opacity-60"></div>
     </div>
 </div>
 
@@ -195,26 +195,27 @@
               tag = document.getElementById('zone-tag'), zoneName = document.getElementById('zone-name');
 
         if (activeRed) {
-            bg.className = "bg-red-50 flex flex-col items-center justify-between min-h-screen p-6 transition-all-500";
+            bg.className = "bg-red-50 flex flex-col items-center justify-between min-h-screen h-[100dvh] p-6 safe-pb transition-all-500";
             ball.className = "w-40 h-40 bg-red-600 rounded-full flex flex-col items-center justify-center text-white shadow-2xl z-10 scale-105 transition-all-500";
             ring.className = "absolute w-72 h-72 bg-red-400 rounded-full radar-ring";
             icon.innerText = "🚫"; text.innerText = d.danger; 
-            tip.innerHTML = `<span class="font-bold text-red-600 block mb-1">${d.redAlert}</span>${activeRed.reason[currentLang]}`;
+            tip.innerHTML = `<div class="font-bold text-red-600 mb-1">${d.redAlert}</div><div class="text-gray-700">${activeRed.reason[currentLang]}</div>`;
             tag.style.opacity = "1"; zoneName.innerText = activeRed.name[currentLang];
             if(navigator.vibrate) navigator.vibrate([400, 100, 400]);
         } else if (activeYellow || closestDist < 500) {
             let target = activeYellow || closestZone;
-            bg.className = "bg-amber-50 flex flex-col items-center justify-between min-h-screen p-6 transition-all-500";
+            bg.className = "bg-amber-50 flex flex-col items-center justify-between min-h-screen h-[100dvh] p-6 safe-pb transition-all-500";
             ball.className = "w-40 h-40 bg-amber-500 rounded-full flex flex-col items-center justify-center text-white shadow-xl z-10 transition-all-500";
             ring.className = "absolute w-72 h-72 bg-amber-300 rounded-full radar-ring";
             icon.innerText = "⚠️"; text.innerText = d.warn; 
-            tip.innerHTML = `<span class="font-bold text-amber-600 block mb-1">${activeYellow ? d.greyZone : d.approachWarn}</span>${target.reason[currentLang]}`;
+            tip.innerHTML = `<div class="font-bold text-amber-600 mb-1">${activeYellow ? d.greyZone : d.approachWarn}</div><div class="text-gray-700">${target.reason[currentLang]}</div>`;
             tag.style.opacity = "1"; zoneName.innerText = target.name[currentLang];
         } else {
-            bg.className = "bg-blue-50 flex flex-col items-center justify-between min-h-screen p-6 transition-all-500";
+            bg.className = "bg-blue-50 flex flex-col items-center justify-between min-h-screen h-[100dvh] p-6 safe-pb transition-all-500";
             ball.className = "w-40 h-40 bg-blue-500 rounded-full flex flex-col items-center justify-center text-white shadow-xl z-10 transition-all-500";
             ring.className = "absolute w-72 h-72 bg-blue-300 rounded-full radar-ring";
-            icon.innerText = "📸"; text.innerText = d.safe; tip.innerText = d.safeTip;
+            icon.innerText = "📸"; text.innerText = d.safe; 
+            tip.innerHTML = `<div class="text-gray-700 px-4">${d.safeTip}</div>`;
             tag.style.opacity = "0";
         }
     }
