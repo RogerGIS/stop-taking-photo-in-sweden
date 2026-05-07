@@ -3,60 +3,149 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>瑞典拍照小卫士 | Sweden Lens Buddy</title>
+    <title>Sweden Lens Buddy | 瑞典拍照小卫士</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .radar-pulse { animation: pulse 2s infinite; }
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 0.6; }
-            70% { transform: scale(1.4); opacity: 0; }
-            100% { transform: scale(1); opacity: 0; }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            80%, 100% { opacity: 0; transform: scale(1.5); }
         }
-        .bg-safe { background-color: #f0f9ff; }
-        .bg-warn { background-color: #fffbeb; }
-        .bg-danger { background-color: #fef2f2; }
+        .radar-ring { animation: pulse-ring 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite; }
+        .transition-all-500 { transition: all 0.5s ease; }
+        .lang-btn.active { background-color: white; color: #1e293b; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
     </style>
 </head>
-<body id="body-bg" class="bg-safe flex flex-col items-center justify-between min-h-screen p-6 text-slate-800 transition-colors duration-500">
+<body id="app-bg" class="bg-blue-50 flex flex-col items-center justify-between min-h-screen p-6 text-slate-800 transition-all-500">
 
-    <div class="text-center mt-6">
-        <h1 class="text-2xl font-bold text-slate-900">瑞典拍照小卫士</h1>
-        <p id="sub-status" class="text-slate-500 text-sm mt-1">正在实时监测地理位置...</p>
+    <!-- 语言切换器 -->
+    <div class="fixed top-4 right-4 flex bg-slate-200/50 backdrop-blur p-1 rounded-xl z-50">
+        <button onclick="setLanguage('zh')" id="btn-zh" class="lang-btn active px-3 py-1 text-xs rounded-lg transition-all">中文</button>
+        <button onclick="setLanguage('en')" id="btn-en" class="lang-btn px-3 py-1 text-xs rounded-lg transition-all">EN</button>
+        <button onclick="setLanguage('sv')" id="btn-sv" class="lang-btn px-3 py-1 text-xs rounded-lg transition-all">SV</button>
+    </div>
+
+    <!-- 顶部状态栏 -->
+    <div class="text-center mt-8">
+        <div id="badge" class="inline-block px-3 py-1 rounded-full bg-blue-100 text-blue-600 text-xs font-bold mb-2 transition-all-500">
+            PROTECTING
+        </div>
+        <h1 id="ui-title" class="text-2xl font-black text-slate-900 tracking-tight">瑞典拍照小卫士</h1>
+        <p id="geo-debug" class="text-slate-400 font-mono text-[10px] mt-1">Waiting for GPS...</p>
     </div>
 
     <!-- 核心雷达 -->
-    <div class="relative flex items-center justify-center">
-        <div id="radar-ring" class="absolute w-64 h-64 bg-blue-400 rounded-full opacity-20 radar-pulse"></div>
-        <div id="main-status-node" class="w-48 h-48 bg-blue-500 rounded-full flex flex-col items-center justify-center text-white shadow-2xl z-10 transition-all duration-500">
-            <span id="status-icon" class="text-5xl mb-2">📸</span>
-            <span id="status-text" class="font-bold text-lg">可以拍照</span>
+    <div class="relative flex items-center justify-center my-8">
+        <div id="radar-ring" class="absolute w-72 h-72 bg-blue-400 rounded-full radar-ring"></div>
+        <div id="status-ball" class="w-48 h-48 bg-blue-500 rounded-full flex flex-col items-center justify-center text-white shadow-xl z-10 transition-all-500 text-center px-4">
+            <span id="status-icon" class="text-6xl mb-1">📸</span>
+            <span id="status-text" class="font-bold text-lg leading-tight">可以拍照</span>
+        </div>
+        <div id="zone-tag" class="absolute -bottom-8 px-4 py-2 bg-white/80 backdrop-blur shadow-sm rounded-2xl text-xs font-bold text-slate-700 opacity-0 transition-all-500">
+            <span id="ui-near">靠近</span>: <span id="zone-name">---</span>
         </div>
     </div>
 
-    <!-- 贴心文案卡片 -->
-    <div class="w-full max-w-sm">
-        <div id="tip-card" class="bg-white p-5 rounded-3xl shadow-xl border border-slate-100">
-            <h3 class="font-bold text-slate-900 mb-2 flex items-center">
-                <span class="mr-2">💡</span> 学长贴士
-            </h3>
-            <p id="tip-text" class="text-slate-600 leading-relaxed text-sm">
-                当前环境安全。瑞典法律规定，除了受保护对象外，您可以自由拍照。建议避免对着路人正脸哦。
+    <!-- 提示卡片 -->
+    <div class="w-full max-w-md space-y-4">
+        <div class="bg-white/70 backdrop-blur-md p-6 rounded-[2rem] shadow-xl border border-white/50">
+            <div class="flex items-center mb-3">
+                <div id="tip-icon-bg" class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+                    <span id="tip-emoji">💡</span>
+                </div>
+                <h3 id="ui-tip-title" class="font-bold text-slate-900">学长提醒</h3>
+            </div>
+            <p id="tip-text" class="text-slate-600 leading-relaxed text-sm">Initializing...</p>
+        </div>
+
+        <div class="flex flex-col items-center space-y-2">
+            <button id="ui-guide-btn" onclick="toggleGuide()" class="text-slate-400 text-xs underline decoration-dotted">查看禁拍标志图鉴</button>
+            <p id="ui-disclaimer" class="text-[10px] text-slate-400 text-center px-8 italic">
+                * Based on open data. Physical signs always prevail.
             </p>
         </div>
-        
-        <p class="text-center text-xs text-slate-400 mt-4 px-4">
-            * 本工具仅供参考。在瑞典，物理警示牌具有最高法律效力。看到“划掉的相机”标志请务必收手机。
-        </p>
+    </div>
+
+    <!-- 图鉴 Modal -->
+    <div id="guide-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] hidden items-center justify-center p-6">
+        <div class="bg-white rounded-[2.5rem] p-8 max-w-sm w-full">
+            <h2 id="ui-modal-title" class="text-xl font-bold mb-4 text-center">认准这些标志</h2>
+            <div class="space-y-4 text-sm text-slate-600">
+                <div class="flex items-start p-3 bg-yellow-50 rounded-xl">
+                    <span class="text-2xl mr-3">🟡</span>
+                    <p id="ui-modal-y">黄色圆牌是受保护对象标志，严禁拍照。</p>
+                </div>
+                <div class="flex items-start p-3 bg-blue-50 rounded-xl">
+                    <span class="text-2xl mr-3">🟦</span>
+                    <p id="ui-modal-b">蓝色方牌常见于政府建筑，建议谨慎。</p>
+                </div>
+            </div>
+            <button id="ui-modal-close" onclick="toggleGuide()" class="w-full mt-6 py-4 bg-slate-900 text-white rounded-2xl font-bold">我知道了</button>
+        </div>
     </div>
 
     <script>
-        // 内置雷区数据 (可根据 Overpass 数据继续扩充)
-        const SENSITIVE_ZONES = [
-            { name: "国防学院/KTH", lat: 59.3456, lng: 18.0715, r: 250 },
-            { name: "国防部 Tre Vapen", lat: 59.3386, lng: 18.1023, r: 300 },
-            { name: "皇宫特定区", lat: 59.3268, lng: 18.0717, r: 150 },
-            { name: "电台/电视台区", lat: 59.3347, lng: 18.1005, r: 200 }
+        // 语言字典
+        const LANG_DATA = {
+            zh: {
+                title: "瑞典拍照小卫士", badge: "实时防护中", near: "靠近", tipTitle: "学长提醒",
+                guideBtn: "查看禁拍标志图鉴", disclaimer: "* 基于开源数据，物理警示牌具有最高法律效力。",
+                modalTitle: "认准这些标志", modalY: "黄色圆牌是受保护对象 (Skyddsobjekt)，严禁拍照。", modalB: "蓝色方牌常见于政府办公区，建议收起手机。", modalClose: "我知道了",
+                safe: "可以拍照", safeTip: "当前位置安全。请享受美景，但建议避开路人正脸或警车。",
+                warn: "谨慎观察", warnTip: "附近有敏感设施。请留意是否有带相机划线标志的黄色圆牌。",
+                danger: "严禁拍照", dangerTip: "【紧急】您正处于禁拍区附近！请立刻收起手机，不要做任何举机动作。",
+                locError: "定位失败。请在浏览器设置中允许 GPS 访问。"
+            },
+            en: {
+                title: "Sweden Lens Buddy", badge: "Live Protecting", near: "Near", tipTitle: "Buddy's Tip",
+                guideBtn: "View Sign Guide", disclaimer: "* Based on open data. Physical signs always prevail.",
+                modalTitle: "Recognize the Signs", modalY: "Yellow circle means 'Skyddsobjekt'. Photography strictly forbidden.", modalB: "Blue square signs are govt buildings. Avoid aiming your lens.", modalClose: "Got it",
+                safe: "Safe to Snap", safeTip: "Environment is safe. Enjoy the view, but respect personal privacy.",
+                warn: "Be Cautious", warnTip: "Sensitive facility nearby. Look out for yellow signs with crossed-out camera.",
+                danger: "NO PHOTOS", dangerTip: "CRITICAL! You are near a restricted area. Put your phone away immediately.",
+                locError: "GPS Failed. Please enable location access in browser settings."
+            },
+            sv: {
+                title: "Svensk Fotovakt", badge: "Skyddar Nu", near: "Nära", tipTitle: "Tips från kompisen",
+                guideBtn: "Visa skyltguide", disclaimer: "* Baserat på öppna data. Fysiska skyltar gäller alltid.",
+                modalTitle: "Lär känna skyltarna", modalY: "Gul rund skylt betyder Skyddsobjekt. Foto- och avbildningsförbud.", modalB: "Blå skyltar finns vid myndigheter. Undvik att fotografera fönster.", modalClose: "Jag förstår",
+                safe: "Fritt fram", safeTip: "Området är säkert. Njut av utsikten men visa respekt för integritet.",
+                warn: "Var vaksam", warnTip: "Känsligt objekt i närheten. Håll utkik efter gula skyddsobjektsskyltar.",
+                danger: "FOTOFÖRBUD", dangerTip: "VARNING! Du är nära ett skyddsobjekt. Lägg undan mobilen direkt.",
+                locError: "Positionering misslyckades. Tillåt GPS-åtkomst i webbläsaren."
+            }
+        };
+
+        let currentLang = 'zh';
+        const DANGER_ZONES = [
+            { name: {zh:"国防学院", en:"Defence Univ.", sv:"Försvarshögskolan"}, lat: 59.3456, lng: 18.0715, r: 200 },
+            { name: {zh:"国防部", en:"MoD HQ", sv:"Högkvarteret"}, lat: 59.3386, lng: 18.1023, r: 300 },
+            { name: {zh:"皇宫", en:"Royal Palace", sv:"Slottet"}, lat: 59.3268, lng: 18.0717, r: 150 },
+            { name: {zh:"电台区", en:"SVT/SR Area", sv:"Radiohuset"}, lat: 59.3347, lng: 18.1005, r: 250 }
         ];
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-' + lang).classList.add('active');
+            
+            // 更新静态文本
+            const d = LANG_DATA[lang];
+            document.getElementById('ui-title').innerText = d.title;
+            document.getElementById('badge').innerText = d.badge;
+            document.getElementById('ui-near').innerText = d.near;
+            document.getElementById('ui-tip-title').innerText = d.tipTitle;
+            document.getElementById('ui-guide-btn').innerText = d.guideBtn;
+            document.getElementById('ui-disclaimer').innerText = d.disclaimer;
+            document.getElementById('ui-modal-title').innerText = d.modalTitle;
+            document.getElementById('ui-modal-y').innerText = d.modalY;
+            document.getElementById('ui-modal-b').innerText = d.modalB;
+            document.getElementById('ui-modal-close').innerText = d.modalClose;
+            
+            // 重新运行一次 UI 更新逻辑
+            if (lastPosition) updateUI(lastPosition);
+        }
+
+        let lastPosition = null;
 
         function getDistance(lat1, lon1, lat2, lon2) {
             const R = 6371e3;
@@ -68,61 +157,63 @@
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         }
 
-        function updateStatus(position) {
-            const { latitude, longitude } = position.coords;
-            let minDistance = Infinity;
-            let currentZone = null;
+        function updateUI(pos) {
+            lastPosition = pos;
+            const { latitude, longitude } = pos.coords;
+            const d = LANG_DATA[currentLang];
+            document.getElementById('geo-debug').innerText = `LAT: ${latitude.toFixed(4)} | LNG: ${longitude.toFixed(4)}`;
 
-            SENSITIVE_ZONES.forEach(zone => {
+            let minDir = Infinity;
+            let targetZone = null;
+
+            DANGER_ZONES.forEach(zone => {
                 const dist = getDistance(latitude, longitude, zone.lat, zone.lng);
-                if (dist < minDistance) {
-                    minDistance = dist;
-                    currentZone = zone;
-                }
+                if (dist < minDir) { minDir = dist; targetZone = zone; }
             });
 
-            const body = document.getElementById('body-bg');
+            const bg = document.getElementById('app-bg');
+            const ball = document.getElementById('status-ball');
             const ring = document.getElementById('radar-ring');
-            const node = document.getElementById('main-status-node');
             const icon = document.getElementById('status-icon');
             const text = document.getElementById('status-text');
             const tip = document.getElementById('tip-text');
-            const sub = document.getElementById('sub-status');
+            const tag = document.getElementById('zone-tag');
+            const zoneNameSpan = document.getElementById('zone-name');
 
-            sub.innerText = `当前坐标: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-
-            if (minDistance < 100) { // 红色禁区
-                body.className = "bg-danger flex flex-col items-center justify-between min-h-screen p-6 text-slate-800";
-                node.className = "w-48 h-48 bg-red-600 rounded-full flex flex-col items-center justify-center text-white shadow-2xl z-10 scale-110";
-                ring.className = "absolute w-64 h-64 bg-red-400 rounded-full opacity-40 radar-pulse";
-                icon.innerText = "🚫";
-                text.innerText = "绝对禁拍";
-                tip.innerText = "紧急！你正位于受保护对象（Skyddsobjekt）附近。请立刻收起手机并放入包内，不要对着建筑有任何举机动作！";
-                if(navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
-            } else if (minDistance < 300) { // 黄色预警
-                body.className = "bg-warn flex flex-col items-center justify-between min-h-screen p-6 text-slate-800";
-                node.className = "w-48 h-48 bg-yellow-500 rounded-full flex flex-col items-center justify-center text-white shadow-2xl z-10";
-                ring.className = "absolute w-64 h-64 bg-yellow-400 rounded-full opacity-30 radar-pulse";
-                icon.innerText = "⚠️";
-                text.innerText = "多加留意";
-                tip.innerText = `靠近敏感区域：${currentZone.name}。请抬头观察四周，寻找带有照相机划线标志的黄色圆牌，看到标志请勿拍照。`;
-            } else { // 绿色安全
-                body.className = "bg-safe flex flex-col items-center justify-between min-h-screen p-6 text-slate-800";
-                node.className = "w-48 h-48 bg-blue-500 rounded-full flex flex-col items-center justify-center text-white shadow-2xl z-10";
-                ring.className = "absolute w-64 h-64 bg-blue-400 rounded-full opacity-20 radar-pulse";
-                icon.innerText = "📸";
-                text.innerText = "可以拍照";
-                tip.innerText = "环境安全。您可以尽情记录美景，但建议避开警察、军警或政府机构的窗户。";
+            if (minDir < 120) {
+                bg.className = "bg-red-50 flex flex-col items-center justify-between min-h-screen p-6 transition-all-500";
+                ball.className = "w-48 h-48 bg-red-600 rounded-full flex flex-col items-center justify-center text-white shadow-2xl z-10 scale-105 transition-all-500";
+                ring.className = "absolute w-72 h-72 bg-red-400 rounded-full radar-ring";
+                icon.innerText = "🚫"; text.innerText = d.danger; tip.innerText = d.dangerTip;
+                tag.style.opacity = "1"; zoneNameSpan.innerText = targetZone.name[currentLang];
+            } else if (minDir < 400) {
+                bg.className = "bg-amber-50 flex flex-col items-center justify-between min-h-screen p-6 transition-all-500";
+                ball.className = "w-48 h-48 bg-amber-500 rounded-full flex flex-col items-center justify-center text-white shadow-xl z-10 transition-all-500";
+                ring.className = "absolute w-72 h-72 bg-amber-300 rounded-full radar-ring";
+                icon.innerText = "⚠️"; text.innerText = d.warn; tip.innerText = d.warnTip;
+                tag.style.opacity = "1"; zoneNameSpan.innerText = targetZone.name[currentLang];
+            } else {
+                bg.className = "bg-blue-50 flex flex-col items-center justify-between min-h-screen p-6 transition-all-500";
+                ball.className = "w-48 h-48 bg-blue-500 rounded-full flex flex-col items-center justify-center text-white shadow-xl z-10 transition-all-500";
+                ring.className = "absolute w-72 h-72 bg-blue-300 rounded-full radar-ring";
+                icon.innerText = "📸"; text.innerText = d.safe; tip.innerText = d.safeTip;
+                tag.style.opacity = "0";
             }
         }
 
-        if (navigator.geolocation) {
-            navigator.geolocation.watchPosition(updateStatus, (err) => {
-                document.getElementById('tip-text').innerText = "无法获取位置信息，请确保已开启 GPS 权限并允许浏览器访问地理位置。";
-            }, { enableHighAccuracy: true });
-        } else {
-            alert("您的浏览器不支持地理定位。");
+        function toggleGuide() {
+            const m = document.getElementById('guide-modal');
+            m.classList.toggle('hidden'); m.classList.toggle('flex');
         }
+
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(updateUI, (err) => {
+                document.getElementById('tip-text').innerText = LANG_DATA[currentLang].locError;
+            }, { enableHighAccuracy: true });
+        }
+        
+        // 默认初始化中文
+        setLanguage('zh');
     </script>
 </body>
 </html>
